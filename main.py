@@ -1,6 +1,6 @@
 import replicate, os, time, json
 import google.generativeai as genai
-from config import *
+from .config import *
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -273,6 +273,14 @@ def replicate_model_calling(prompt, model_name, **kwargs):
     Returns:
         list: 生成文件的路径列表
     """
+    # 首先检查模型是否被支持
+    if model_name not in REPLICATE_MODELS:
+        supported_models = list(REPLICATE_MODELS.keys())
+        supported_models_str = '\n'.join([f'  - {model}' for model in supported_models])
+        error_message = f"Model '{model_name}' is not supported.\n\nSupported models:\n{supported_models_str}\n\nPlease use one of the supported models listed above."
+        print(f"❌ {error_message}")
+        raise ValueError(error_message)
+    
     os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
     output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{model_name}.jpg"))
     
@@ -333,17 +341,48 @@ def replicate_model_calling(prompt, model_name, **kwargs):
                 elif param_config['default'] is not None:
                     input_params[param_name] = param_config['default']
             
-            print(f"📋 Final parameters for {model_name}: {input_params}")
+            # 简化日志输出 - 只显示模型名称和prompt前100字符
+            prompt_preview = input_params.get('prompt', '')[:100] + '...' if len(input_params.get('prompt', '')) > 100 else input_params.get('prompt', '')
+            print(f"📋 Using model: {model_name}")
+            if prompt_preview:
+                print(f"   Prompt preview: {prompt_preview}")
             
             # 实际调用Replicate API
             output = replicate.run(model_name, input=input_params)
             
-            len_output = len(output)
+            # 处理不同类型的输出
+            saved_files = []
+            
+            # 智能检测输出类型并标准化为列表
+            # FileOutput对象通常有read()方法，应该当作单文件处理
+            if hasattr(output, 'read'):
+                # 单个FileOutput对象
+                output_list = [output]
+                len_output = 1
+            elif hasattr(output, '__iter__') and not isinstance(output, (str, bytes)):
+                try:
+                    # 尝试转换为列表（适用于多文件输出）
+                    output_list = list(output)
+                    # 检查是否是字节数据被误认为可迭代
+                    if len(output_list) > 10 and all(isinstance(item, int) for item in output_list[:5]):
+                        # 可能是字节数据被错误转换，当作单文件处理
+                        output_list = [output]
+                        len_output = 1
+                    else:
+                        len_output = len(output_list)
+                except (TypeError, ValueError):
+                    # 如果无法转换为列表，当作单文件处理
+                    output_list = [output]
+                    len_output = 1
+            else:
+                # 单个输出项（字符串、字节等）
+                output_list = [output]
+                len_output = 1
+            
             print(f"✅ {model_name} succeeded! Processing {len_output} file(s)")
             
             # 处理输出文件
-            saved_files = []
-            for index, item in enumerate(output):
+            for index, item in enumerate(output_list):
                 base_name, ext = os.path.splitext(output_filepath)
                 if len_output > 1: 
                     current_filepath = f"{base_name}_{index+1}{ext}"
@@ -422,7 +461,18 @@ if __name__ == "__main__":
             # Ask again for model choice
             choose_model = input(f"Choose a model: \n{option_list_string}\n")
         
-        selected_model = model_list[int(choose_model) - 1]
+        try:
+            model_index = int(choose_model) - 1
+            if model_index < 0 or model_index >= len(model_list):
+                print("❌ Invalid model selection. Please choose a valid number.")
+                continue
+            selected_model = model_list[model_index]
+        except ValueError:
+            print("❌ Invalid input. Please enter a valid number.")
+            continue
+        except IndexError:
+            print("❌ Model selection out of range. Please choose a valid number.")
+            continue
         
         # Show parameters for selected model
         view_params = input(f"\nView parameters for {selected_model}? (y/n): ").lower().strip()
@@ -513,4 +563,27 @@ if __name__ == "__main__":
         
         print(f"Generated {len(final_filepaths)} file(s):")
         for filepath in final_filepaths: print(f"  - {filepath}")
+
+
+def main():
+    """Command line interface for replicate model calling"""
+    import argparse
+    parser = argparse.ArgumentParser(description='Replicate Batch Process')
+    parser.add_argument('--prompt', required=True, help='Text prompt for generation')
+    parser.add_argument('--model', default='black-forest-labs/flux-dev', help='Model name')
+    parser.add_argument('--output', help='Output file path')
+    
+    args = parser.parse_args()
+    
+    result = replicate_model_calling(
+        prompt=args.prompt,
+        model_name=args.model,
+        output_filepath=args.output
+    )
+    
+    print(f"Generated: {result}")
+
+
+if __name__ == "__main__":
+    main()
         

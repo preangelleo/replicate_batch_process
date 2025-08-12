@@ -134,9 +134,9 @@ FALLBACK_MODELS = {
             'description': 'Flux Kontext Max调用失败，切换到Qwen Image'
         },
         'parameter_invalidation': {
-            'fallback_model': 'black-forest-labs/flux-dev',
+            'fallback_model': 'qwen/qwen-image',  # 改为Qwen，避免与flux-dev循环
             'condition': 'unsupported_params',
-            'description': 'Flux Kontext Max参数不兼容，切换到Flux Dev'
+            'description': 'Flux Kontext Max参数不兼容，切换到Qwen Image'
         }
     },
     'qwen/qwen-image': {
@@ -169,7 +169,7 @@ FALLBACK_PARAMETER_MAPPING = {
             # Flux Kontext Max不支持的参数
             'guidance', 'go_fast', 'megapixels', 'num_outputs', 
             'prompt_strength', 'num_inference_steps', 'disable_safety_checker',
-            'output_quality'
+            'output_quality'  # 必须移除，因为flux-kontext-max不支持
         ],
         'add_params': {
             # 添加默认参数
@@ -260,39 +260,10 @@ FALLBACK_PARAMETER_MAPPING = {
             'go_fast': True,
             'megapixels': '1',
             'num_outputs': 1,
-            'output_quality': 80,
+            'output_quality': 80,  # Flux Dev支持output_quality，可以保留
             'prompt_strength': 0.8,
             'num_inference_steps': 28,
             'disable_safety_checker': False
-        }
-    },
-    
-    # Flux Kontext Max -> Flux Dev (参数不兼容时fallback)
-    ('black-forest-labs/flux-kontext-max', 'black-forest-labs/flux-dev'): {
-        'param_mapping': {
-            'aspect_ratio': 'aspect_ratio',
-            'output_format': 'output_format',
-            'seed': 'seed'
-        },
-        'remove_params': [
-            'input_image', 'safety_tolerance', 'prompt_upsampling'
-        ],
-        'add_params': {
-            'guidance': 3,
-            'go_fast': True,
-            'megapixels': '1',
-            'num_outputs': 1,
-            'output_quality': 80,
-            'prompt_strength': 0.8,
-            'num_inference_steps': 28,
-            'disable_safety_checker': False
-        },
-        'value_mapping': {
-            'aspect_ratio': {
-                'match_input_image': '16:9',  # 默认值
-                '21:9': '16:9',  # 不支持的比例映射到16:9
-                '9:21': '9:16'
-            }
         }
     }
 }

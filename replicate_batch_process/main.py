@@ -341,7 +341,11 @@ def replicate_model_calling(prompt, model_name, **kwargs):
                 elif param_config['default'] is not None:
                     input_params[param_name] = param_config['default']
             
-            print(f"📋 Final parameters for {model_name}: {input_params}")
+            # 简化日志输出 - 只显示模型名称和prompt前100字符
+            prompt_preview = input_params.get('prompt', '')[:100] + '...' if len(input_params.get('prompt', '')) > 100 else input_params.get('prompt', '')
+            print(f"📋 Using model: {model_name}")
+            if prompt_preview:
+                print(f"   Prompt preview: {prompt_preview}")
             
             # 实际调用Replicate API
             output = replicate.run(model_name, input=input_params)
