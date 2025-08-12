@@ -1,12 +1,52 @@
+Metadata-Version: 2.4
+Name: replicate-batch-process
+Version: 1.0.0
+Summary: Intelligent batch processing tool for Replicate models with automatic fallback mechanisms
+Home-page: https://github.com/preangelleo/replicate_batch_process
+Author: preangelleo
+Author-email: 
+Maintainer: preangelleo
+License: MIT
+Project-URL: Homepage, https://github.com/preangelleo/replicate_batch_process
+Project-URL: Documentation, https://github.com/preangelleo/replicate_batch_process#readme
+Project-URL: Repository, https://github.com/preangelleo/replicate_batch_process.git
+Project-URL: Bug Reports, https://github.com/preangelleo/replicate_batch_process/issues
+Project-URL: Changelog, https://github.com/preangelleo/replicate_batch_process/releases
+Keywords: replicate,ai,batch-processing,image-generation,machine-learning,api-client,fallback-mechanism,concurrent-processing
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: replicate>=0.15.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: asyncio-throttle>=1.0.2
+Requires-Dist: python-dotenv>=0.19.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=22.0; extra == "dev"
+Requires-Dist: flake8>=4.0; extra == "dev"
+Requires-Dist: mypy>=0.950; extra == "dev"
+Provides-Extra: test
+Requires-Dist: pytest>=6.0; extra == "test"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "test"
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
 # Replicate Model Calling Tool - Complete Usage Guide
-
-**[中文版 README](README_CN.md)** | **English** | **[PyPI Package](https://pypi.org/project/replicate-batch-process/)**
-
-## 📦 Quick Installation
-
-```bash
-pip install replicate-batch-process
-```
 
 ## 🚀 Overview
 
@@ -192,16 +232,9 @@ for result in results:
 
 ### **Step One**: Run initialization script
 
-**If installed via pip:**
 ```bash
-# Use the installed command
-replicate-init
-```
-
-**If using source code:**
-```bash
-# Run the initialization script directly
-python init_environment.py
+# Auto-check and setup API keys
+python setup.py
 ```
 
 The initialization script will:
@@ -388,16 +421,13 @@ for batch in chunk_prompts(huge_prompt_list, 50):
 ## 🎯 Complete Usage Workflow
 
 ```bash
-# 1️⃣ Install package
-pip install replicate-batch-process
+# 1️⃣ First use - Environment initialization
+python setup.py
 
-# 2️⃣ First use - Environment initialization
-replicate-init
-
-# 3️⃣ Run examples (if using source code)
+# 2️⃣ Run examples
 python example_usage.py
 
-# 4️⃣ Or use in your code
+# 3️⃣ Or use in your code
 python your_script.py
 ```
 

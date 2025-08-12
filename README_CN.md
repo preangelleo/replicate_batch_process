@@ -1,5 +1,13 @@
 # Replicate 模型调用工具 - 完整使用指南
 
+**中文** | **[English README](README.md)** | **[PyPI 包](https://pypi.org/project/replicate-batch-process/)**
+
+## 📦 快速安装
+
+```bash
+pip install replicate-batch-process
+```
+
 ## 🚀 概述
 
 这个工具提供了三种方式调用 Replicate 模型，从单个图像生成到大规模批量处理：
@@ -184,9 +192,16 @@ for result in results:
 
 ### **第一步**: 运行初始化脚本
 
+**如果通过pip安装:**
 ```bash
-# 自动检查和设置API密钥
-python setup.py
+# 使用安装的命令
+replicate-init
+```
+
+**如果使用源码:**
+```bash
+# 直接运行初始化脚本
+python init_environment.py
 ```
 
 初始化脚本会：
@@ -373,13 +388,16 @@ for batch in chunk_prompts(huge_prompt_list, 50):
 ## 🎯 完整使用流程
 
 ```bash
-# 1️⃣ 首次使用 - 环境初始化
-python setup.py
+# 1️⃣ 安装包
+pip install replicate-batch-process
 
-# 2️⃣ 运行示例
+# 2️⃣ 首次使用 - 环境初始化
+replicate-init
+
+# 3️⃣ 运行示例（如果使用源码）
 python example_usage.py
 
-# 3️⃣ 或在你的代码中使用
+# 4️⃣ 或在你的代码中使用
 python your_script.py
 ```
 

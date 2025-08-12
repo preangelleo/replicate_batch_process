@@ -1,0 +1,43 @@
+# Include documentation files
+include README.md
+include README_CN.md
+include LICENSE
+
+# Include configuration files  
+include pyproject.toml
+include *.txt
+include requirements.txt
+
+# Include Python source files
+include *.py
+recursive-include . *.py
+
+# Exclude development and output files
+exclude .env
+exclude .env.*
+exclude *.log
+exclude .DS_Store
+exclude Thumbs.db
+
+# Exclude directories
+recursive-exclude output *
+recursive-exclude code_backup *
+recursive-exclude .git *
+recursive-exclude .github *
+recursive-exclude .claude-flow *
+recursive-exclude .swarm *
+recursive-exclude __pycache__ *
+recursive-exclude *.egg-info *
+recursive-exclude dist *
+recursive-exclude build *
+
+# Exclude media files that might be generated
+exclude *.jpg
+exclude *.png
+exclude *.webp
+exclude *.mp4
+exclude *.gif
+
+# Exclude test files for distribution
+exclude test_*.py
+exclude *_test.py
