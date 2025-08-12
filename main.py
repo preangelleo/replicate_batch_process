@@ -110,62 +110,281 @@ def show_all_models_parameters():
         all_models_info[model_name] = get_supported_parameters(model_name, format_for_display=False)
     return all_models_info
 
+def check_fallback_conditions(model_name, **kwargs):
+    """检查是否需要在调用前执行fallback
+    
+    Returns:
+        tuple: (should_fallback, fallback_reason, fallback_model, mapped_kwargs)
+    """
+    fallback_config = FALLBACK_MODELS.get(model_name, {})
+    
+    # 检查reference image条件
+    if 'reference_image' in fallback_config:
+        # 检查是否有任何可能的reference image参数
+        model_config = REPLICATE_MODELS.get(model_name, {})
+        supported_params = model_config.get('supported_params', {})
+        
+        # 检查用户是否传入了reference image相关参数，但模型不支持
+        reference_image_params = ['input_image', 'image', 'start_image', 'reference_image']
+        
+        for param_name in reference_image_params:
+            if (param_name in kwargs and 
+                kwargs[param_name] is not None and
+                not model_config.get('reference_image', False)):
+                
+                fallback_info = fallback_config['reference_image']
+                fallback_model = fallback_info['fallback_model']
+                mapped_kwargs = map_parameters(model_name, fallback_model, kwargs)
+                
+                print(f"🔄 Reference image detected ({param_name}) but {model_name} doesn't support it")
+                print(f"   Falling back to {fallback_model}")
+                print(f"   Reason: {fallback_info['description']}")
+                
+                return True, 'reference_image', fallback_model, mapped_kwargs
+    
+    # 检查parameter invalidation条件
+    if 'parameter_invalidation' in fallback_config:
+        model_config = REPLICATE_MODELS.get(model_name, {})
+        supported_params = model_config.get('supported_params', {})
+        
+        # 检查是否有不支持的参数
+        unsupported_params = []
+        for param_name in kwargs:
+            if param_name not in supported_params and param_name != 'output_filepath':
+                unsupported_params.append(param_name)
+        
+        if unsupported_params:
+            fallback_info = fallback_config['parameter_invalidation']
+            fallback_model = fallback_info['fallback_model']
+            mapped_kwargs = map_parameters(model_name, fallback_model, kwargs)
+            
+            print(f"🔄 Unsupported parameters detected: {unsupported_params}")
+            print(f"   Falling back from {model_name} to {fallback_model}")
+            print(f"   Reason: {fallback_info['description']}")
+            
+            return True, 'parameter_invalidation', fallback_model, mapped_kwargs
+    
+    return False, None, None, kwargs
+
+def map_parameters(source_model, target_model, kwargs):
+    """将参数从源模型映射到目标模型
+    
+    Args:
+        source_model: 源模型名称
+        target_model: 目标模型名称  
+        kwargs: 原始参数字典
+        
+    Returns:
+        dict: 映射后的参数字典
+    """
+    mapping_key = (source_model, target_model)
+    mapping_config = FALLBACK_PARAMETER_MAPPING.get(mapping_key, {})
+    
+    if not mapping_config:
+        print(f"⚠️  No parameter mapping found for {source_model} -> {target_model}")
+        return kwargs
+    
+    mapped_kwargs = {}
+    
+    # 1. 直接映射参数
+    param_mapping = mapping_config.get('param_mapping', {})
+    for source_param, target_param in param_mapping.items():
+        if source_param in kwargs:
+            value = kwargs[source_param]
+            
+            # 检查是否需要值映射
+            value_mapping = mapping_config.get('value_mapping', {}).get(source_param, {})
+            if value_mapping and value in value_mapping:
+                value = value_mapping[value]
+                print(f"   📝 Mapped {source_param}={kwargs[source_param]} -> {target_param}={value}")
+            else:
+                print(f"   ✅ Mapped {source_param} -> {target_param}")
+            
+            mapped_kwargs[target_param] = value
+    
+    # 2. 添加未映射但目标模型支持的参数
+    remove_params = set(mapping_config.get('remove_params', []))
+    for param_name, param_value in kwargs.items():
+        if (param_name not in param_mapping and 
+            param_name not in remove_params and
+            param_name != 'output_filepath'):  # 保留output_filepath
+            # 检查目标模型是否支持这个参数
+            target_model_config = REPLICATE_MODELS.get(target_model, {})
+            target_supported_params = target_model_config.get('supported_params', {})
+            
+            if param_name in target_supported_params:
+                mapped_kwargs[param_name] = param_value
+                print(f"   ➡️  Kept {param_name} (supported by target model)")
+    
+    # 3. 添加默认参数
+    add_params = mapping_config.get('add_params', {})
+    for param_name, param_value in add_params.items():
+        if param_name not in mapped_kwargs:  # 不覆盖已有参数
+            mapped_kwargs[param_name] = param_value
+            print(f"   ➕ Added {param_name}={param_value}")
+    
+    # 4. 保留output_filepath
+    if 'output_filepath' in kwargs:
+        mapped_kwargs['output_filepath'] = kwargs['output_filepath']
+    
+    # 5. 显示移除的参数
+    removed_params = [p for p in kwargs if p not in mapped_kwargs and p != 'output_filepath']
+    if removed_params:
+        print(f"   ❌ Removed unsupported params: {removed_params}")
+    
+    return mapped_kwargs
+
+def execute_fallback_on_error(original_model, error, **kwargs):
+    """在API调用失败时执行fallback
+    
+    Args:
+        original_model: 原始模型名称
+        error: 错误信息
+        **kwargs: 原始参数
+        
+    Returns:
+        tuple: (should_fallback, fallback_model, mapped_kwargs)
+    """
+    fallback_config = FALLBACK_MODELS.get(original_model, {})
+    
+    if 'fail' in fallback_config:
+        fallback_info = fallback_config['fail']
+        fallback_model = fallback_info['fallback_model']
+        mapped_kwargs = map_parameters(original_model, fallback_model, kwargs)
+        
+        print(f"❌ {original_model} failed with error: {str(error)}")
+        print(f"🔄 Falling back to {fallback_model}")
+        print(f"   Reason: {fallback_info['description']}")
+        
+        return True, fallback_model, mapped_kwargs
+    
+    print(f"❌ {original_model} failed and no fallback available")
+    return False, None, kwargs
+
 def replicate_model_calling(prompt, model_name, **kwargs):
+    """
+    智能模型调用函数，支持自动Fallback机制
+    
+    Args:
+        prompt: 生成提示词
+        model_name: 模型名称
+        **kwargs: 模型参数
+        
+    Returns:
+        list: 生成文件的路径列表
+    """
     os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
     output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{model_name}.jpg"))
-
-    # Build input parameters based on model configuration and user kwargs
-    input_params = {"prompt": prompt}
     
-    # Get model configuration
-    model_config = REPLICATE_MODELS.get(model_name, {})
-    supported_params = model_config.get('supported_params', {})
+    original_model = model_name
+    current_kwargs = kwargs.copy()
+    fallback_chain = []  # 记录fallback链
     
-    # Add parameters from kwargs that are supported by the model
-    for param_name, param_config in supported_params.items():
-        if param_name in kwargs:
-            # Handle file inputs specially
-            if param_config.get('type') == 'file' and kwargs[param_name] is not None:
-                file_input = kwargs[param_name]
-                # If it's a string, treat as file path or URL
-                if isinstance(file_input, str):
-                    # Check if it's a URL
-                    if file_input.startswith(('http://', 'https://')):
-                        input_params[param_name] = file_input
+    print(f"🚀 Starting generation with {model_name}")
+    
+    # 第一步：检查是否需要预处理fallback（reference image, parameter invalidation）
+    should_fallback, fallback_reason, fallback_model, mapped_kwargs = check_fallback_conditions(model_name, **current_kwargs)
+    
+    if should_fallback:
+        fallback_chain.append(f"{model_name} -> {fallback_model} ({fallback_reason})")
+        model_name = fallback_model
+        current_kwargs = mapped_kwargs
+        print(f"🔄 Pre-processing fallback applied: {model_name}")
+    
+    # 尝试调用模型，支持失败后的fallback
+    max_fallback_attempts = 3  # 最多尝试3次fallback
+    attempt = 0
+    
+    while attempt <= max_fallback_attempts:
+        try:
+            print(f"📞 Attempting call to {model_name} (attempt {attempt + 1})")
+            
+            # Build input parameters based on model configuration and user kwargs
+            input_params = {"prompt": prompt}
+            
+            # Get model configuration
+            model_config = REPLICATE_MODELS.get(model_name, {})
+            supported_params = model_config.get('supported_params', {})
+            
+            # Add parameters from kwargs that are supported by the model
+            for param_name, param_config in supported_params.items():
+                if param_name in current_kwargs:
+                    # Handle file inputs specially
+                    if param_config.get('type') == 'file' and current_kwargs[param_name] is not None:
+                        file_input = current_kwargs[param_name]
+                        # If it's a string, treat as file path or URL
+                        if isinstance(file_input, str):
+                            # Check if it's a URL
+                            if file_input.startswith(('http://', 'https://')):
+                                input_params[param_name] = file_input
+                            else:
+                                # Treat as local file path, open it
+                                try:
+                                    input_params[param_name] = open(file_input, 'rb')
+                                    print(f"📁 Opened file: {file_input}")
+                                except FileNotFoundError:
+                                    print(f"⚠️  File not found: {file_input}, skipping parameter {param_name}")
+                                    continue
+                        else:
+                            # Already a file object or other acceptable format
+                            input_params[param_name] = file_input
                     else:
-                        # Treat as local file path, open it
-                        try:
-                            input_params[param_name] = open(file_input, 'rb')
-                            print(f"Opened file: {file_input}")
-                        except FileNotFoundError:
-                            print(f"Warning: File not found: {file_input}, skipping parameter {param_name}")
-                            continue
-                else:
-                    # Already a file object or other acceptable format
-                    input_params[param_name] = file_input
+                        input_params[param_name] = current_kwargs[param_name]
+                elif param_config['default'] is not None:
+                    input_params[param_name] = param_config['default']
+            
+            print(f"📋 Final parameters for {model_name}: {input_params}")
+            
+            # 实际调用Replicate API
+            output = replicate.run(model_name, input=input_params)
+            
+            len_output = len(output)
+            print(f"✅ {model_name} succeeded! Processing {len_output} file(s)")
+            
+            # 处理输出文件
+            saved_files = []
+            for index, item in enumerate(output):
+                base_name, ext = os.path.splitext(output_filepath)
+                if len_output > 1: 
+                    current_filepath = f"{base_name}_{index+1}{ext}"
+                else: 
+                    current_filepath = output_filepath
+                
+                with open(current_filepath, "wb") as file: 
+                    file.write(item.read())
+                saved_files.append(current_filepath)
+            
+            # 显示fallback链信息
+            if fallback_chain:
+                print(f"🔗 Fallback chain: {' -> '.join(fallback_chain)} -> SUCCESS")
+                print(f"   Original model: {original_model}")
+                print(f"   Final model: {model_name}")
+            
+            return saved_files if saved_files else [output_filepath]
+            
+        except Exception as error:
+            attempt += 1
+            
+            # 如果已经是最后一次尝试，抛出错误
+            if attempt > max_fallback_attempts:
+                print(f"❌ All fallback attempts exhausted. Final error: {str(error)}")
+                if fallback_chain:
+                    print(f"🔗 Attempted fallback chain: {' -> '.join(fallback_chain)} -> FAILED")
+                raise error
+            
+            # 尝试执行失败后的fallback
+            should_fallback, fallback_model, mapped_kwargs = execute_fallback_on_error(model_name, error, **current_kwargs)
+            
+            if should_fallback:
+                fallback_chain.append(f"{model_name} -> {fallback_model} (api_error)")
+                model_name = fallback_model
+                current_kwargs = mapped_kwargs
+                print(f"🔄 Error fallback applied: {model_name}")
             else:
-                input_params[param_name] = kwargs[param_name]
-        elif param_config['default'] is not None:
-            input_params[param_name] = param_config['default']
-    
-    print(f"Using parameters: {input_params}")
-    input = input_params
-
-    output = replicate.run(model_name, input=input)
-    
-    len_output = len(output)
-    print(f"Processing {len_output} file(s)")
-    
-    saved_files = []
-    for index, item in enumerate(output):
-        base_name, ext = os.path.splitext(output_filepath)
-        if len_output > 1: current_filepath = f"{base_name}_{index+1}{ext}"
-        else: current_filepath = output_filepath
-        
-        with open(current_filepath, "wb") as file: file.write(item.read())
-        saved_files.append(current_filepath)
-    
-    return saved_files if saved_files else [output_filepath]
+                print(f"❌ No fallback available for {model_name}")
+                if fallback_chain:
+                    print(f"🔗 Partial fallback chain: {' -> '.join(fallback_chain)} -> FAILED")
+                raise error
 
 if __name__ == "__main__":
     model_list = list(REPLICATE_MODELS.keys())   

@@ -113,6 +113,191 @@ REPLICATE_MODELS = {
 }
 
 
+# Fallback机制配置
+FALLBACK_MODELS = {
+    'black-forest-labs/flux-dev': {
+        'reference_image': {
+            'fallback_model': 'black-forest-labs/flux-kontext-max',
+            'condition': 'has_reference_image',
+            'description': 'Flux Dev不支持reference image，切换到Flux Kontext Max'
+        },
+        'fail': {
+            'fallback_model': 'qwen/qwen-image',
+            'condition': 'api_error',
+            'description': 'Flux Dev调用失败，切换到Qwen Image'
+        }
+    },
+    'black-forest-labs/flux-kontext-max': {
+        'fail': {
+            'fallback_model': 'qwen/qwen-image',
+            'condition': 'api_error', 
+            'description': 'Flux Kontext Max调用失败，切换到Qwen Image'
+        },
+        'parameter_invalidation': {
+            'fallback_model': 'black-forest-labs/flux-dev',
+            'condition': 'unsupported_params',
+            'description': 'Flux Kontext Max参数不兼容，切换到Flux Dev'
+        }
+    },
+    'qwen/qwen-image': {
+        'fail': {
+            'fallback_model': 'google/imagen-4-ultra',
+            'condition': 'api_error',
+            'description': 'Qwen Image调用失败，切换到Imagen 4 Ultra'
+        }
+    },
+    'google/imagen-4-ultra': {
+        'fail': {
+            'fallback_model': 'black-forest-labs/flux-dev',
+            'condition': 'api_error',
+            'description': 'Imagen 4 Ultra调用失败，切换到Flux Dev'
+        }
+    }
+}
+
+# Fallback参数映射配置
+FALLBACK_PARAMETER_MAPPING = {
+    # Flux Dev -> Flux Kontext Max (添加reference image支持)
+    ('black-forest-labs/flux-dev', 'black-forest-labs/flux-kontext-max'): {
+        'param_mapping': {
+            # 直接映射的参数
+            'aspect_ratio': 'aspect_ratio',
+            'output_format': 'output_format',
+            'seed': 'seed'
+        },
+        'remove_params': [
+            # Flux Kontext Max不支持的参数
+            'guidance', 'go_fast', 'megapixels', 'num_outputs', 
+            'prompt_strength', 'num_inference_steps', 'disable_safety_checker',
+            'output_quality'
+        ],
+        'add_params': {
+            # 添加默认参数
+            'prompt_upsampling': False,
+            'safety_tolerance': 2
+        }
+    },
+    
+    # Flux Dev -> Qwen Image  
+    ('black-forest-labs/flux-dev', 'qwen/qwen-image'): {
+        'param_mapping': {
+            'aspect_ratio': 'aspect_ratio',
+            'output_quality': 'output_quality', 
+            'guidance': 'guidance',
+            'num_inference_steps': 'num_inference_steps'
+        },
+        'remove_params': [
+            'seed', 'go_fast', 'megapixels', 'num_outputs',
+            'prompt_strength', 'disable_safety_checker'
+        ],
+        'add_params': {
+            'output_format': 'webp',
+            'enhance_prompt': False,
+            'image_size': 'optimize_for_quality'
+        },
+        'value_mapping': {
+            # 输出格式映射
+            'output_format': {
+                'webp': 'webp',
+                'jpg': 'jpg', 
+                'png': 'png'
+            }
+        }
+    },
+    
+    # Flux Kontext Max -> Qwen Image
+    ('black-forest-labs/flux-kontext-max', 'qwen/qwen-image'): {
+        'param_mapping': {
+            'aspect_ratio': 'aspect_ratio',
+            'output_format': 'output_format'
+        },
+        'remove_params': [
+            'input_image', 'seed', 'safety_tolerance', 'prompt_upsampling'
+        ],
+        'add_params': {
+            'guidance': 4,
+            'output_quality': 90,
+            'enhance_prompt': True,
+            'image_size': 'optimize_for_quality',
+            'num_inference_steps': 50
+        },
+        'value_mapping': {
+            'aspect_ratio': {
+                'match_input_image': '16:9',  # 默认值
+                '21:9': '16:9',  # 不支持的比例映射到16:9
+                '9:21': '9:16'
+            }
+        }
+    },
+    
+    # Qwen Image -> Imagen 4 Ultra
+    ('qwen/qwen-image', 'google/imagen-4-ultra'): {
+        'param_mapping': {
+            'aspect_ratio': 'aspect_ratio',
+            'output_format': 'output_format'
+        },
+        'remove_params': [
+            'go_fast', 'guidance', 'image_size', 'lora_scale', 
+            'enhance_prompt', 'output_quality', 'negative_prompt',
+            'num_inference_steps'
+        ],
+        'add_params': {
+            'safety_filter_level': 'block_only_high'
+        }
+    },
+    
+    # Imagen 4 Ultra -> Flux Dev
+    ('google/imagen-4-ultra', 'black-forest-labs/flux-dev'): {
+        'param_mapping': {
+            'aspect_ratio': 'aspect_ratio',
+            'output_format': 'output_format'
+        },
+        'remove_params': [
+            'safety_filter_level'
+        ],
+        'add_params': {
+            'guidance': 3,
+            'go_fast': True,
+            'megapixels': '1',
+            'num_outputs': 1,
+            'output_quality': 80,
+            'prompt_strength': 0.8,
+            'num_inference_steps': 28,
+            'disable_safety_checker': False
+        }
+    },
+    
+    # Flux Kontext Max -> Flux Dev (参数不兼容时fallback)
+    ('black-forest-labs/flux-kontext-max', 'black-forest-labs/flux-dev'): {
+        'param_mapping': {
+            'aspect_ratio': 'aspect_ratio',
+            'output_format': 'output_format',
+            'seed': 'seed'
+        },
+        'remove_params': [
+            'input_image', 'safety_tolerance', 'prompt_upsampling'
+        ],
+        'add_params': {
+            'guidance': 3,
+            'go_fast': True,
+            'megapixels': '1',
+            'num_outputs': 1,
+            'output_quality': 80,
+            'prompt_strength': 0.8,
+            'num_inference_steps': 28,
+            'disable_safety_checker': False
+        },
+        'value_mapping': {
+            'aspect_ratio': {
+                'match_input_image': '16:9',  # 默认值
+                '21:9': '16:9',  # 不支持的比例映射到16:9
+                '9:21': '9:16'
+            }
+        }
+    }
+}
+
+
 
 
 SYSTEM_PROMPT_STRUCTURED_IMAGE_DESCRIPTION = """# Image Description Refinement System Prompt
