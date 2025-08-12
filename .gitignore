@@ -13,3 +13,8 @@ output/
 *.mp4
 .DS_Store
 Thumbs.db
+
+# Claude Code 生成的文件和目录
+.claude-flow/
+.swarm/
+code_backup/
