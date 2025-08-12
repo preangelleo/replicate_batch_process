@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
 from collections import deque
 
-from main import replicate_model_calling
+from .main import replicate_model_calling
 
 
 @dataclass

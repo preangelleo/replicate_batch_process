@@ -9,8 +9,8 @@ import time
 import os
 
 # 导入我们的模块
-from main import replicate_model_calling
-from intelligent_batch_processor import intelligent_batch_process, IntelligentBatchProcessor, BatchRequest
+from .main import replicate_model_calling
+from .intelligent_batch_processor import intelligent_batch_process, IntelligentBatchProcessor, BatchRequest
 
 
 # =============================================================================

@@ -1,6 +1,6 @@
 import replicate, os, time, json
 import google.generativeai as genai
-from config import *
+from .config import *
 from dotenv import load_dotenv
 
 load_dotenv()
