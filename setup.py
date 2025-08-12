@@ -27,7 +27,7 @@ def read_requirements():
 
 setup(
     name='replicate-batch-process',
-    version='1.0.0',
+    version='1.0.1',
     author='preangelleo',
     author_email='',
     description='Intelligent batch processing tool for Replicate models with automatic fallback mechanisms',
@@ -40,13 +40,6 @@ setup(
         'Documentation': 'https://github.com/preangelleo/replicate_batch_process#readme',
     },
     packages=find_packages(),
-    py_modules=[
-        'main',
-        'config', 
-        'intelligent_batch_processor',
-        'init_environment',
-        'example_usage'
-    ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -79,8 +72,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'replicate-batch=main:main',
-            'replicate-init=init_environment:main',
+            'replicate-batch=replicate_batch_process.main:main',
+            'replicate-init=replicate_batch_process.init_environment:main',
         ],
     },
     include_package_data=True,

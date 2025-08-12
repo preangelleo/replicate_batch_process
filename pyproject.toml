@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "replicate-batch-process"
-version = "1.0.0"
+version = "1.0.1"
 description = "Intelligent batch processing tool for Replicate models with automatic fallback mechanisms"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -61,8 +61,8 @@ test = [
 ]
 
 [project.scripts]
-replicate-batch = "main:main"
-replicate-init = "init_environment:main"
+replicate-batch = "replicate_batch_process.main:main"
+replicate-init = "replicate_batch_process.init_environment:main"
 
 [project.urls]
 Homepage = "https://github.com/preangelleo/replicate_batch_process"
@@ -71,12 +71,9 @@ Repository = "https://github.com/preangelleo/replicate_batch_process.git"
 "Bug Reports" = "https://github.com/preangelleo/replicate_batch_process/issues"
 Changelog = "https://github.com/preangelleo/replicate_batch_process/releases"
 
-[tool.setuptools]
-py-modules = ["main", "config", "intelligent_batch_processor", "init_environment", "example_usage"]
-
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["*"]
+include = ["replicate_batch_process*"]
 exclude = ["tests*", "output*", "code_backup*", ".claude-flow*", ".swarm*"]
 
 [tool.black]

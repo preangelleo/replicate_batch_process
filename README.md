@@ -32,7 +32,7 @@ replicate-init
 
 ### 2. Single Image Generation
 ```python
-from main import replicate_model_calling
+from replicate_batch_process import replicate_model_calling
 
 file_paths = replicate_model_calling(
     prompt="A beautiful sunset over mountains",
@@ -44,7 +44,7 @@ file_paths = replicate_model_calling(
 ### 3. Batch Processing
 ```python
 import asyncio
-from intelligent_batch_processor import intelligent_batch_process
+from replicate_batch_process import intelligent_batch_process
 
 files = await intelligent_batch_process(
     prompts=["sunset", "city", "forest"],

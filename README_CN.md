@@ -32,7 +32,7 @@ replicate-init
 
 ### 2. 单个图像生成
 ```python
-from main import replicate_model_calling
+from replicate_batch_process import replicate_model_calling
 
 file_paths = replicate_model_calling(
     prompt="山峦上的美丽日落",
@@ -44,7 +44,7 @@ file_paths = replicate_model_calling(
 ### 3. 批量处理
 ```python
 import asyncio
-from intelligent_batch_processor import intelligent_batch_process
+from replicate_batch_process import intelligent_batch_process
 
 files = await intelligent_batch_process(
     prompts=["日落", "城市", "森林"],
