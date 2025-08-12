@@ -1,0 +1,15 @@
+# Replicate 模型调用工具
+.env
+*.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+output/
+*.jpg
+*.png
+*.webp
+*.mp4
+.DS_Store
+Thumbs.db
