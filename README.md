@@ -187,7 +187,12 @@ replicate_model_calling(
 ```
 
 ### API Error Recovery
-Automatic fallback chain: `Flux Dev` → `Qwen Image` → `Imagen 4 Ultra`
+
+**v1.0.9 Enhanced Triangular Fallback Loop:**
+- `Flux Dev` → `Flux Kontext Max` (for reference images)
+- `Flux Kontext Max` → `Qwen Image` (on sensitive content)
+- `Qwen Image` → `Flux Dev` (with weak censorship disabled)
+- **Ultimate Fallback**: Black image (1600x900) if all models fail
 
 ## 📋 Usage Scenarios
 
@@ -273,12 +278,12 @@ FALLBACK_MODELS = {
 - **Fix**: Corrected parameter assignment in BatchRequest
 - **Status**: ✅ Fully resolved
 
-### Current Limitations (v1.0.7)
-⚠️ **Kontext Max Input Image**
-- **Issue**: Input image parameter sometimes fails with Kontext Max model
-- **Workaround**: Automatic fallback to Qwen model (transparent to user)
-- **Impact**: Minor - generation still succeeds via fallback
-- **Fix Timeline**: Investigating for v1.0.8
+### Current Limitations (v1.0.9)
+⚠️ **Kontext Max Parameter Compatibility**
+- **Issue**: Certain parameters cause Kontext Max to fail
+- **Solution**: v1.0.9 implements triangular fallback loop for maximum success
+- **Impact**: Minimal - automatic recovery ensures image generation
+- **Status**: ✅ Enhanced with triangular fallback mechanism
 
 ℹ️ **Rate Limiting on Large Batches**
 - **Issue**: Batches >50 may hit rate limits even with throttling
@@ -290,15 +295,16 @@ Found a bug? Please report at: https://github.com/preangelleo/replicate_batch_pr
 
 ## 📦 Migration Guide
 
-### Upgrading from v1.0.6 → v1.0.7
+### Upgrading to v1.0.9 (Latest)
 ```bash
-pip install --upgrade replicate-batch-process==1.0.7
+pip install --upgrade replicate-batch-process==1.0.9
 ```
 
-**Changes:**
-- ✅ Fixed FileOutput handling bug (814 empty files issue)
-- ✅ Enhanced README documentation
-- ✅ No API changes - drop-in replacement
+**New Features:**
+- ✅ Triangular fallback loop for maximum success rate
+- ✅ Black image (1600x900) as ultimate fallback
+- ✅ Fixed flux-kontext-max parameter compatibility issues
+- ✅ Simplified logging output
 
 **Action Required:** None - fully backward compatible
 
@@ -336,6 +342,8 @@ pip install --upgrade replicate-batch-process==1.0.7
 ### Version History
 | Version | Release Date | Key Changes |
 |---------|-------------|-------------|
+| v1.0.9 | 2025-08-12 | Triangular fallback loop, black image ultimate fallback |
+| v1.0.8 | 2025-08-12 | Fixed parameter compatibility, improved logging |
 | v1.0.7 | 2025-01-05 | FileOutput fix, README improvements |
 | v1.0.6 | 2025-01-05 | Bug fixes, model validation |
 | v1.0.5 | 2025-01-04 | Parameter handling improvements |

@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: replicate-batch-process
-Version: 1.0.8
+Version: 1.0.9
 Summary: Intelligent batch processing tool for Replicate models with automatic fallback mechanisms
 Home-page: https://github.com/preangelleo/replicate_batch_process
 Author: preangelleo
