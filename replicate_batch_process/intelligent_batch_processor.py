@@ -591,6 +591,9 @@ async def intelligent_batch_process(
     Returns:
         成功生成的文件路径列表
         
+    Raises:
+        ValueError: 当模型不被支持时
+        
     示例:
         # 自动生成文件名
         files = await intelligent_batch_process(prompts, model_name)
@@ -603,6 +606,15 @@ async def intelligent_batch_process(
         )
     """
     import os
+    from .config import REPLICATE_MODELS
+    
+    # 检查模型是否被支持
+    if model_name not in REPLICATE_MODELS:
+        supported_models = list(REPLICATE_MODELS.keys())
+        supported_models_str = '\n'.join([f'  - {model}' for model in supported_models])
+        error_message = f"Model '{model_name}' is not supported.\n\nSupported models:\n{supported_models_str}\n\nPlease use one of the supported models listed above."
+        print(f"❌ {error_message}")
+        raise ValueError(error_message)
     
     # 创建请求
     requests = []

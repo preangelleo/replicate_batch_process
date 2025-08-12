@@ -1,6 +1,6 @@
 # Replicate Batch Process
 
-**[中文版 README](README_CN.md)** | **English** | **[PyPI Package](https://pypi.org/project/replicate-batch-process/)**
+**[中文版 README](https://github.com/preangelleo/replicate_batch_process/blob/main/README_CN.md)** | **English** | **[PyPI Package](https://pypi.org/project/replicate-batch-process/)**
 
 [![PyPI version](https://badge.fury.io/py/replicate-batch-process.svg)](https://badge.fury.io/py/replicate-batch-process)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -15,6 +15,7 @@ Intelligent batch processing tool for Replicate models with **automatic fallback
 - 🎯 **Three Usage Modes** - Single, batch same-model, and mixed-model processing
 - 📝 **Custom File Naming** - Ordered output with correspondence control
 - 🛡️ **Error Resilience** - Comprehensive retry and recovery mechanisms
+- ✅ **Model Validation** - Automatic detection of unsupported models with clear error messages
 
 ## 📦 Installation
 
@@ -52,6 +53,24 @@ files = await intelligent_batch_process(
     max_concurrent=8
 )
 ```
+
+## 📋 Supported Models
+
+### Image Generation Models
+| Model | Price | Specialization | Reference Image Support |
+|-------|-------|----------------|-------------------------|
+| **black-forest-labs/flux-dev** | $0.025 | Fast generation, minimal censorship | ❌ |
+| **black-forest-labs/flux-kontext-max** | $0.08 | Image editing, character consistency | ✅ |
+| **qwen/qwen-image** | $0.025 | Text rendering, cover images | ❌ |
+| **google/imagen-4-ultra** | $0.06 | High-quality detailed images | ❌ |
+
+### Video Generation Models
+| Model | Price | Specialization | Reference Image Support |
+|-------|-------|----------------|-------------------------|
+| **google/veo-3-fast** | $3.32/call | Fast video with audio | ✅ |
+| **kwaivgi/kling-v2.1-master** | $0.28/sec | 1080p video, 5-10 second duration | ✅ |
+
+> ⚠️ **Note**: Using unsupported models will return a clear error message: "Model '{model_name}' is not supported. Please use one of the supported models listed above."
 
 ## 🔄 Intelligent Fallback System
 

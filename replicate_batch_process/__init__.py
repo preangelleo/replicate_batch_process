@@ -15,7 +15,7 @@ from .intelligent_batch_processor import (
     BatchRequest
 )
 
-__version__ = "1.0.2"
+__version__ = "1.0.4"
 __author__ = "preangelleo"
 
 __all__ = [

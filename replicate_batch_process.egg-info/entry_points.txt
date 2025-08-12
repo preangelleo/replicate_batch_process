@@ -1,3 +1,3 @@
 [console_scripts]
-replicate-batch = main:main
-replicate-init = init_environment:main
+replicate-batch = replicate_batch_process.main:main
+replicate-init = replicate_batch_process.init_environment:main

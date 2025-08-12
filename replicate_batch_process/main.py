@@ -273,6 +273,14 @@ def replicate_model_calling(prompt, model_name, **kwargs):
     Returns:
         list: 生成文件的路径列表
     """
+    # 首先检查模型是否被支持
+    if model_name not in REPLICATE_MODELS:
+        supported_models = list(REPLICATE_MODELS.keys())
+        supported_models_str = '\n'.join([f'  - {model}' for model in supported_models])
+        error_message = f"Model '{model_name}' is not supported.\n\nSupported models:\n{supported_models_str}\n\nPlease use one of the supported models listed above."
+        print(f"❌ {error_message}")
+        raise ValueError(error_message)
+    
     os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
     output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{model_name}.jpg"))
     
@@ -422,7 +430,18 @@ if __name__ == "__main__":
             # Ask again for model choice
             choose_model = input(f"Choose a model: \n{option_list_string}\n")
         
-        selected_model = model_list[int(choose_model) - 1]
+        try:
+            model_index = int(choose_model) - 1
+            if model_index < 0 or model_index >= len(model_list):
+                print("❌ Invalid model selection. Please choose a valid number.")
+                continue
+            selected_model = model_list[model_index]
+        except ValueError:
+            print("❌ Invalid input. Please enter a valid number.")
+            continue
+        except IndexError:
+            print("❌ Model selection out of range. Please choose a valid number.")
+            continue
         
         # Show parameters for selected model
         view_params = input(f"\nView parameters for {selected_model}? (y/n): ").lower().strip()

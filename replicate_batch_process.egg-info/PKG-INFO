@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: replicate-batch-process
-Version: 1.0.0
+Version: 1.0.3
 Summary: Intelligent batch processing tool for Replicate models with automatic fallback mechanisms
 Home-page: https://github.com/preangelleo/replicate_batch_process
 Author: preangelleo
@@ -46,416 +46,188 @@ Dynamic: home-page
 Dynamic: license-file
 Dynamic: requires-python
 
-# Replicate Model Calling Tool - Complete Usage Guide
+# Replicate Batch Process
 
-## 🚀 Overview
+**[中文版 README](https://github.com/preangelleo/replicate_batch_process/blob/main/README_CN.md)** | **English** | **[PyPI Package](https://pypi.org/project/replicate-batch-process/)**
 
-This tool provides three ways to call Replicate models, from single image generation to large-scale batch processing:
+[![PyPI version](https://badge.fury.io/py/replicate-batch-process.svg)](https://badge.fury.io/py/replicate-batch-process)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-1. **Single Image Generation** - Direct calling, suitable for testing and one-time use
-2. **Simple Batch Processing** - Convenient interface, suitable for batch generation with same parameters
-3. **Advanced Batch Processing** - Flexible configuration, suitable for mixed models and complex requirements
+Intelligent batch processing tool for Replicate models with **automatic fallback mechanisms** and concurrent processing.
 
-## 🔄 Intelligent Fallback Mechanism - Core Feature
+## ✨ Key Features
 
-**Automatic model switching, no compatibility worries!**
+- 🔄 **Intelligent Fallback System** - Automatic model switching on incompatibility
+- ⚡ **Smart Concurrency Control** - Adaptive rate limiting and batch processing
+- 🎯 **Three Usage Modes** - Single, batch same-model, and mixed-model processing
+- 📝 **Custom File Naming** - Ordered output with correspondence control
+- 🛡️ **Error Resilience** - Comprehensive retry and recovery mechanisms
 
-Our system intelligently detects model compatibility issues and automatically switches to the best alternative model:
+## 📦 Installation
 
-### Three Fallback Trigger Conditions:
+```bash
+pip install replicate-batch-process
+```
 
-1. **Reference Image Auto-Switching**
-   ```python
-   # User passes reference image to model that doesn't support it
-   replicate_model_calling(
-       prompt="Generate based on this image", 
-       model_name="black-forest-labs/flux-dev",  # Doesn't support reference image
-       input_image="path/to/image.jpg"           # System auto-switches to flux-kontext-max
-   )
-   ```
+## 🚀 Quick Start
 
-2. **Parameter Incompatibility Auto-Handling**
-   ```python
-   # User passes unsupported parameters, system auto-cleans and switches
-   replicate_model_calling(
-       prompt="Generate image",
-       model_name="black-forest-labs/flux-kontext-max",
-       guidance=3.5,        # Unsupported parameter
-       num_outputs=2        # Auto-switches to supporting model
-   )
-   ```
+### 1. Initialize Environment
+```bash
+# Set up API keys (first time only)
+replicate-init
+```
 
-3. **API Error Auto-Retry**
-   ```python
-   # If primary model fails, automatically tries backup models
-   # Flux Dev -> Qwen Image -> Imagen 4 Ultra
-   ```
-
-### 🛠️ Custom Fallback Configuration
-
-If you have specific model preferences, you can modify fallback rules:
-
-**Modify Location**: `FALLBACK_MODELS` and `FALLBACK_PARAMETER_MAPPING` in `config.py` file
-
-**Example Modification**:
+### 2. Single Image Generation
 ```python
-# Custom fallback in config.py
+from replicate_batch_process import replicate_model_calling
+
+file_paths = replicate_model_calling(
+    prompt="A beautiful sunset over mountains",
+    model_name="black-forest-labs/flux-dev",
+    output_filepath="output/sunset.jpg"
+)
+```
+
+### 3. Batch Processing
+```python
+import asyncio
+from replicate_batch_process import intelligent_batch_process
+
+files = await intelligent_batch_process(
+    prompts=["sunset", "city", "forest"],
+    model_name="black-forest-labs/flux-dev",
+    max_concurrent=8
+)
+```
+
+## 🔄 Intelligent Fallback System
+
+**Automatic model switching when issues arise:**
+
+### Reference Image Auto-Detection
+```python
+# User provides reference image to non-supporting model
+replicate_model_calling(
+    prompt="Generate based on this image",
+    model_name="black-forest-labs/flux-dev",  # Doesn't support reference images
+    input_image="path/to/image.jpg"           # → Auto-switches to flux-kontext-max
+)
+```
+
+### Parameter Compatibility Handling
+```python
+# Unsupported parameters automatically cleaned and model switched
+replicate_model_calling(
+    prompt="Generate image",
+    model_name="black-forest-labs/flux-kontext-max",
+    guidance=3.5,        # Unsupported parameter
+    num_outputs=2        # → Auto-switches to compatible model
+)
+```
+
+### API Error Recovery
+Automatic fallback chain: `Flux Dev` → `Qwen Image` → `Imagen 4 Ultra`
+
+## 📋 Usage Scenarios
+
+| Mode | Use Case | Command |
+|------|----------|---------|
+| **Single** | One-off generation, testing | `replicate_model_calling()` |
+| **Batch Same** | Multiple prompts, same model | `intelligent_batch_process()` |
+| **Mixed Models** | Different models/parameters | `IntelligentBatchProcessor()` |
+
+## 🧠 Smart Processing Strategies
+
+The system automatically selects optimal processing strategy:
+
+- **Immediate Processing**: Tasks ≤ available quota → Full concurrency
+- **Window Processing**: Tasks ≤ 600 but > current quota → Wait then batch
+- **Dynamic Queue**: Tasks > 600 → Continuous processing with queue management
+
+## ⚙️ Configuration
+
+### API Keys
+Get your Replicate API token: [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens)
+
+### Custom Fallback Rules
+Modify `config.py`:
+```python
 FALLBACK_MODELS = {
-    'your-preferred-model': {
+    'your-model': {
         'fail': {
-            'fallback_model': 'your-backup-model',
-            'condition': 'api_error',
-            'description': 'Custom fallback description'
+            'fallback_model': 'backup-model',
+            'condition': 'api_error'
         }
     }
 }
 ```
 
-## 📦 File Structure
+## 📊 Rate Limiting
 
-```
-replicate_batch_process/
-├── setup.py                     # Environment initialization script 🚀
-├── main.py                      # Single image generation core function
-├── config.py                    # Model configuration
-├── intelligent_batch_processor.py  # Intelligent batch processor
-├── example_usage.py            # Complete usage examples for three scenarios ⭐
-├── .env                         # API key configuration (generated after first run)
-├── .gitignore                   # Git ignore rules (auto-created/updated)
-├── output/                      # Output directory (auto-created)
-└── README.md                   # This documentation
-```
+- **Replicate API**: 600 requests/minute (shared across all models)
+- **Recommended Concurrency**: 5-8 (conservative) to 12 (aggressive)
+- **Auto-Retry**: Built-in 429 error handling with exponential backoff
 
-## 🎯 Three Usage Methods
-
-### Method 1: Single Image Generation
-
-**Use Case**: Single generation, model testing, interactive use
+## 💡 Best Practices
 
 ```python
-# See detailed example in SINGLE_IMAGE_PARAMS in example_usage.py
+# For large batches, use chunking
+def process_large_batch(prompts, chunk_size=50):
+    for chunk in chunks(prompts, chunk_size):
+        files = await intelligent_batch_process(chunk, model_name)
+        yield files
 
-from main import replicate_model_calling
-
-# Core calling code
-file_paths = replicate_model_calling(
-    prompt="A beautiful sunset over mountains",
-    model_name="black-forest-labs/flux-dev",
-    output_filepath="output/my_image.jpg",
-    aspect_ratio="16:9",
-    output_quality=80
-)
-
-print(f"Generated file: {file_paths[0]}")
-```
-
-**Features**:
-- ✅ Simple and direct, no extra setup needed
-- ✅ Immediate results return
-- ✅ Supports all model parameter customization
-- ✅ Immediate download and save upon completion
-
-### Method 2: Simple Batch Processing
-
-**Use Case**: Same model, same parameters batch generation
-
-```python
-# See detailed example in BATCH_SAME_MODEL_PARAMS in example_usage.py
-
-import asyncio
-from intelligent_batch_processor import intelligent_batch_process
-
-# Core calling code
-files = await intelligent_batch_process(
-    prompts=["sunset", "city", "robot", "forest"],  # Prompt list
-    model_name="black-forest-labs/flux-dev",
-    max_concurrent=8,
-    output_filepath=["output/scene_01_sunset.jpg", "output/scene_02_city.jpg", 
-                     "output/scene_03_robot.jpg", "output/scene_04_forest.jpg"],  # Optional: custom file paths
-    aspect_ratio="16:9",
-    output_quality=90
-)
-
-print(f"Generated {len(files)} files")
-```
-
-**Features**:
-- 🚀 **Intelligent Strategy Selection** - Automatically selects optimal processing method
-- ⚡ **Instant Download** - Downloads immediately upon task completion
-- 📊 **Progress Monitoring** - Real-time processing progress display
-- 🔄 **Auto-Retry** - Intelligent handling of 429 errors
-- 📝 **Custom File Paths** - Support custom output file paths, ensuring file-content correspondence
-- 🔄 **Intelligent Fallback Mechanism** - Auto-detects compatibility and switches to best model
-
-### Method 3: Advanced Batch Processing
-
-**Use Case**: Mixed models, different parameters, complex batch processing needs
-
-```python
-# See detailed example in MIXED_MODEL_REQUESTS in example_usage.py
-
-import asyncio
-from intelligent_batch_processor import IntelligentBatchProcessor, BatchRequest
-
-# Core calling code
-requests = [
-    BatchRequest(
-        prompt="High quality portrait photo",
-        model_name="google/imagen-4-ultra",
-        kwargs={"aspect_ratio": "4:3", "output_quality": 95}
-    ),
-    BatchRequest(
-        prompt="Anime style character", 
-        model_name="black-forest-labs/flux-dev",
-        kwargs={"aspect_ratio": "1:1", "guidance": 4}
-    ),
-]
-
-processor = IntelligentBatchProcessor(max_concurrent=15, max_retries=3)
-results = await processor.process_intelligent_batch(requests)
-
-# Process results
+# Error handling
 for result in results:
     if result.success:
-        print(f"✅ Success: {result.file_paths}")
+        print(f"✅ Generated: {result.file_paths}")
     else:
         print(f"❌ Failed: {result.error}")
 ```
 
-**Features**:
-- 🧠 **Intelligent Strategy Selection** - Automatically selects processing strategy based on task volume
-- 🔀 **Mixed Model Support** - Use multiple different models simultaneously
-- ⚙️ **Fine Control** - Independent parameter configuration for each request
-- 📈 **Detailed Statistics** - Complete success/failure statistics
+## 🏗️ Project Structure
 
-## 🚀 Environment Initialization (Required for First Use)
-
-### **Step One**: Run initialization script
-
-```bash
-# Auto-check and setup API keys
-python setup.py
+```
+replicate-batch-process/
+├── main.py                      # Single image generation
+├── intelligent_batch_processor.py  # Batch processing engine
+├── config.py                    # Model configurations & fallbacks
+├── init_environment.py          # Environment setup
+└── example_usage.py            # Complete examples
 ```
 
-The initialization script will:
-- ✅ Check `.env` file and API keys
-- 🔑 Prompt for missing API keys
-- 💾 Auto-create and configure `.env` file
-- 📁 Create necessary directory structure
-- 🔒 Set secure file permissions
-- 🧪 Test API connection
-
-### **API Key Acquisition**:
-- **Replicate API Token**: Visit [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens)
-
-## 🎯 Quick Start
-
-### **Recommended Method**: Use `example_usage.py`
+## 🔧 Development
 
 ```bash
-# 1. Interactive selection of which example to run
+# Clone repository
+git clone https://github.com/preangelleo/replicate_batch_process.git
+
+# Install in development mode
+pip install -e .
+
+# Run examples
 python example_usage.py
-
-# 2. Run all three examples
-python example_usage.py all
-
-# 3. Import and use in your code
-from example_usage import single_image_generation, batch_same_model, advanced_mixed_models
 ```
 
-### **Vibe Coder Friendly**: Copy-and-use format
+## 📄 License
 
-1. **Modify Parameter Configuration** - Modify `PARAMS` variables at the top of file
-2. **Copy Core Code** - Find core calling code marked with 🚀
-3. **Direct Use** - Paste into your project
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🧠 Intelligent Batch Processing Strategies
+## 🤝 Contributing
 
-The batch processor automatically selects optimal strategy based on task volume:
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### Strategy 1: Immediate Full Processing
-**Condition**: Task count ≤ Current available quota
-```
-✅ 12 tasks, current quota 450 → Process all tasks immediately with concurrency
-```
+## 🔗 Links
 
-### Strategy 2: Single Window Batch Processing  
-**Condition**: Task count ≤ Window quota (600), but greater than current quota
-```
-⏳ 450 tasks, current quota 200 → Wait for sufficient quota then batch process
-```
+- **PyPI**: https://pypi.org/project/replicate-batch-process/
+- **GitHub**: https://github.com/preangelleo/replicate_batch_process
+- **Issues**: https://github.com/preangelleo/replicate_batch_process/issues
 
-### Strategy 3: Dynamic Queue Processing
-**Condition**: Task count > Window quota (600)
-```
-🔄 1200 tasks → Process in batches dynamically, complete one add one
-```
+---
 
-## 🎯 Usage Scenario Comparison
-
-| Usage Method | Task Count | Config Complexity | Recommended Scenario |
-|-------------|------------|------------------|---------------------|
-| **Single Image** | 1 | Simple | Testing, demo, single generation |
-| **Simple Batch** | 2-50 | Medium | Same parameter batch generation |
-| **Advanced Batch** | 10-1000+ | High | Mixed models, complex needs |
-
-## 📊 Rate Limiting and Concurrency Control
-
-### Replicate API Limits
-- **Create Predictions**: 600 requests/minute (shared across all models)
-- **Exceed Limit**: Returns 429 error
-
-### Safe Concurrency Recommendations
-```python
-# Conservative setting (recommended for beginners)
-max_concurrent = 5
-
-# Balanced setting (recommended for most users) 
-max_concurrent = 8
-
-# Aggressive setting (requires good retry mechanism)
-max_concurrent = 12
-```
-
-## 🔄 JSON Data Batch Processing Example
-
-If you have structured JSON data, you can use the test script:
-
-```bash
-# Run JSON batch processing test
-python json_batch_test.py
-```
-
-This demonstrates how to extract image descriptions from JSON data and generate them in batches.
-
-## 💡 Best Practices
-
-### 1. Choose Appropriate Method
-```python
-# Single image - direct call to main
-if len(prompts) == 1:
-    result = replicate_model_calling(prompt, model_name)
-
-# Batch same parameters - simple interface  
-elif all_same_params:
-    files = await intelligent_batch_process(prompts, model_name)
-
-# Complex needs - advanced interface
-else:
-    processor = IntelligentBatchProcessor()
-    results = await processor.process_intelligent_batch(requests)
-```
-
-### 2. Error Handling
-```python
-# Check batch processing results
-successful_files = []
-failed_count = 0
-
-for result in results:
-    if result.success:
-        successful_files.extend(result.file_paths)
-    else:
-        failed_count += 1
-        print(f"Failed: {result.error}")
-
-print(f"Success: {len(successful_files)}, Failed: {failed_count}")
-```
-
-### 3. Output Management
-```python
-import time
-import os
-
-# Use timestamp to avoid file conflicts
-timestamp = int(time.time())
-output_dir = f"output/batch_{timestamp}"
-os.makedirs(output_dir, exist_ok=True)
-```
-
-### 4. Large Batch Processing
-```python
-# Process large tasks in chunks
-def chunk_prompts(prompts, chunk_size=50):
-    for i in range(0, len(prompts), chunk_size):
-        yield prompts[i:i + chunk_size]
-
-all_files = []
-for batch in chunk_prompts(huge_prompt_list, 50):
-    files = await intelligent_batch_process(batch, model_name)
-    all_files.extend(files)
-```
-
-## 🚨 Important Notes
-
-1. **API Quota Sharing**: All model calls share the 600/minute limit
-2. **Instant Download**: Each task downloads immediately upon completion, doesn't wait for all to finish
-3. **Concurrency Control**: Recommend starting with lower concurrency, gradually adjust
-4. **Cost Control**: Batch processing rapidly consumes API quota, mind the cost
-5. **Storage Space**: Ensure sufficient disk space for generated files
-
-## 🔧 Troubleshooting
-
-### Common Problem Solutions
-
-1. **429 Error** (Rate Limiting)
-   ```python
-   # Reduce concurrency
-   max_concurrent = 5  # Reduce from 8 to 5
-   ```
-
-2. **Import Error**
-   ```python
-   # Ensure correct directory
-   import sys
-   sys.path.append('/path/to/replicate_batch_process')
-   ```
-
-3. **File Path Issues**
-   ```python
-   # Use absolute paths
-   import os
-   output_dir = os.path.abspath("output/my_batch")
-   ```
-
-## 🎯 Complete Usage Workflow
-
-```bash
-# 1️⃣ First use - Environment initialization
-python setup.py
-
-# 2️⃣ Run examples
-python example_usage.py
-
-# 3️⃣ Or use in your code
-python your_script.py
-```
-
-## 🚀 Quick Start Template
-
-```python
-# 🚀 Method 1: View complete examples
-python example_usage.py
-
-# 🚀 Method 2: Direct copy and use
-from example_usage import BATCH_SAME_MODEL_PARAMS
-from intelligent_batch_processor import intelligent_batch_process
-import asyncio
-
-# Modify parameter configuration
-BATCH_SAME_MODEL_PARAMS["prompts"] = ["your prompt 1", "your prompt 2"]
-BATCH_SAME_MODEL_PARAMS["model_name"] = "black-forest-labs/flux-dev"
-
-# Core calling
-files = asyncio.run(intelligent_batch_process(
-    prompts=BATCH_SAME_MODEL_PARAMS["prompts"],
-    model_name=BATCH_SAME_MODEL_PARAMS["model_name"],
-    max_concurrent=BATCH_SAME_MODEL_PARAMS["max_concurrent"]
-))
-
-print(f"✅ Generation complete! Total {len(files)} files")
-```
-
-Now you have mastered the complete toolkit from single image to large-scale batch processing! 🚀
-
-**Recommended**: Use `example_usage.py` directly - tested, standardized, and Vibe Coder friendly!
+**Made with ❤️ for the AI community**

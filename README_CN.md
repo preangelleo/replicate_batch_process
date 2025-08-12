@@ -1,6 +1,6 @@
 # Replicate 批量处理工具
 
-**中文** | **[English README](README.md)** | **[PyPI 包](https://pypi.org/project/replicate-batch-process/)**
+**中文** | **[English README](https://github.com/preangelleo/replicate_batch_process/blob/main/README.md)** | **[PyPI 包](https://pypi.org/project/replicate-batch-process/)**
 
 [![PyPI version](https://badge.fury.io/py/replicate-batch-process.svg)](https://badge.fury.io/py/replicate-batch-process)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -15,6 +15,7 @@
 - 🎯 **三种使用模式** - 单个、批量同模型、混合模型处理
 - 📝 **自定义文件命名** - 有序输出，内容对应可控
 - 🛡️ **错误恢复机制** - 全面的重试和恢复机制
+- ✅ **模型验证** - 自动检测不支持模型并返回清晰错误信息
 
 ## 📦 安装
 
@@ -52,6 +53,24 @@ files = await intelligent_batch_process(
     max_concurrent=8
 )
 ```
+
+## 📋 支持的模型
+
+### 图像生成模型
+| 模型 | 价格 | 专长领域 | 支持参考图像 |
+|-------|-----|----------|------------------|
+| **black-forest-labs/flux-dev** | $0.025 | 快速生成，审查轻微 | ❌ |
+| **black-forest-labs/flux-kontext-max** | $0.08 | 图像编辑，角色一致性 | ✅ |
+| **qwen/qwen-image** | $0.025 | 文本渲染，封面图片 | ❌ |
+| **google/imagen-4-ultra** | $0.06 | 高质量细节图像 | ❌ |
+
+### 视频生成模型
+| 模型 | 价格 | 专长领域 | 支持参考图像 |
+|-------|-----|----------|------------------|
+| **google/veo-3-fast** | $3.32/次 | 快速视频加音频 | ✅ |
+| **kwaivgi/kling-v2.1-master** | $0.28/秒 | 1080p视频，5-10秒时长 | ✅ |
+
+> ⚠️ **注意**：使用不支持的模型将返回清晰错误信息："模型 '{model_name}' 不被支持。请使用上面列表中的支持模型。"
 
 ## 🔄 智能Fallback系统
 
