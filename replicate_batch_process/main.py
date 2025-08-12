@@ -346,12 +346,28 @@ def replicate_model_calling(prompt, model_name, **kwargs):
             # 实际调用Replicate API
             output = replicate.run(model_name, input=input_params)
             
-            len_output = len(output)
+            # 处理不同类型的输出
+            saved_files = []
+            
+            # 检查输出类型并标准化为列表
+            if hasattr(output, '__iter__') and not isinstance(output, (str, bytes)):
+                try:
+                    # 尝试转换为列表（适用于多文件输出）
+                    output_list = list(output)
+                    len_output = len(output_list)
+                except (TypeError, ValueError):
+                    # 如果无法转换为列表，当作单文件处理
+                    output_list = [output]
+                    len_output = 1
+            else:
+                # 单个输出项
+                output_list = [output]
+                len_output = 1
+            
             print(f"✅ {model_name} succeeded! Processing {len_output} file(s)")
             
             # 处理输出文件
-            saved_files = []
-            for index, item in enumerate(output):
+            for index, item in enumerate(output_list):
                 base_name, ext = os.path.splitext(output_filepath)
                 if len_output > 1: 
                     current_filepath = f"{base_name}_{index+1}{ext}"
