@@ -404,12 +404,33 @@ def replicate_model_calling(prompt, model_name, **kwargs):
         except Exception as error:
             attempt += 1
             
-            # 如果已经是最后一次尝试，抛出错误
+            # 如果已经是最后一次尝试，生成黑图作为最后的fallback
             if attempt > max_fallback_attempts:
                 print(f"❌ All fallback attempts exhausted. Final error: {str(error)}")
                 if fallback_chain:
                     print(f"🔗 Attempted fallback chain: {' -> '.join(fallback_chain)} -> FAILED")
-                raise error
+                
+                # 生成黑色图片作为最终fallback
+                print(f"⚫ Generating black fallback image (1600x900) as final resort...")
+                from PIL import Image
+                import io
+                
+                # 创建1600x900的纯黑图片
+                black_image = Image.new('RGB', (1600, 900), color='black')
+                
+                # 保存图片
+                output_format = current_kwargs.get('output_format', 'png')
+                if output_format == 'webp':
+                    black_image.save(output_filepath, 'WEBP', quality=95)
+                elif output_format == 'jpg':
+                    black_image.save(output_filepath, 'JPEG', quality=95)
+                else:
+                    black_image.save(output_filepath, 'PNG')
+                
+                print(f"⚫ Black fallback image saved: {output_filepath}")
+                print(f"   Reason: All models failed due to content restrictions or API errors")
+                
+                return [output_filepath]
             
             # 尝试执行失败后的fallback
             should_fallback, fallback_model, mapped_kwargs = execute_fallback_on_error(model_name, error, **current_kwargs)
