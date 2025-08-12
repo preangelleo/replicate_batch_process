@@ -624,24 +624,29 @@ async def intelligent_batch_process(
         # 处理输出文件路径
         kwargs_for_this_request = common_kwargs.copy()
         
-        # 检查是否提供了output_filepath列表
+        # 确定 output_filepath
         if 'output_filepath' in common_kwargs:
             output_filepath = common_kwargs['output_filepath']
             if isinstance(output_filepath, list):
                 if len(output_filepath) != len(prompts):
                     raise ValueError(f"output_filepath 列表长度({len(output_filepath)}) 必须与 prompts 长度({len(prompts)}) 相同")
-                kwargs_for_this_request['output_filepath'] = output_filepath[i]
-            # 如果是单个字符串，则所有请求使用相同路径（replicate_model_calling会自动处理）
+                filepath_for_this_request = output_filepath[i]
+            else:
+                # 如果是单个字符串，则所有请求使用相同路径
+                filepath_for_this_request = output_filepath
+            # 从 kwargs 中移除 output_filepath
+            kwargs_for_this_request.pop('output_filepath', None)
         else:
             # 自动生成输出目录和文件名
             os.makedirs(output_dir, exist_ok=True)
             model_safe = model_name.replace('/', '_').replace('-', '_')
             filename = f"intelligent_{model_safe}_{timestamp}_{i:03d}.jpg"
-            kwargs_for_this_request['output_filepath'] = os.path.join(output_dir, filename)
+            filepath_for_this_request = os.path.join(output_dir, filename)
         
         request = BatchRequest(
             prompt=prompt,
             model_name=model_name,
+            output_filepath=filepath_for_this_request,
             kwargs=kwargs_for_this_request,
             request_id=f"intelligent_{timestamp}_{i:03d}"
         )
