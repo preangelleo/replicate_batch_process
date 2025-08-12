@@ -17,6 +17,12 @@
 - 🛡️ **错误恢复机制** - 全面的重试和恢复机制
 - ✅ **模型验证** - 自动检测不支持模型并返回清晰错误信息
 
+## 📋 系统要求
+
+- Python 3.8 或更高版本
+- Replicate API Token ([获取地址](https://replicate.com/account/api-tokens))
+- asyncio 支持批量处理
+
 ## 📦 安装
 
 ```bash
@@ -25,10 +31,16 @@ pip install replicate-batch-process
 
 ## 🚀 快速开始
 
-### 1. 环境初始化
+### 1. 设置 API Token
 ```bash
-# 设置API密钥（仅首次需要）
+# 方式1：交互式设置
 replicate-init
+
+# 方式2：手动设置
+export REPLICATE_API_TOKEN="你的token"
+
+# 方式3：.env 文件
+echo "REPLICATE_API_TOKEN=你的token" > .env
 ```
 
 ### 2. 单个图像生成
@@ -37,21 +49,27 @@ from replicate_batch_process import replicate_model_calling
 
 file_paths = replicate_model_calling(
     prompt="山峦上的美丽日落",
-    model_name="black-forest-labs/flux-dev",
+    model_name="qwen/qwen-image",  # 使用支持的模型
     output_filepath="output/sunset.jpg"
 )
 ```
 
-### 3. 批量处理
+### 3. 批量处理（需要Async）
 ```python
 import asyncio
 from replicate_batch_process import intelligent_batch_process
 
-files = await intelligent_batch_process(
-    prompts=["日落", "城市", "森林"],
-    model_name="black-forest-labs/flux-dev",
-    max_concurrent=8
-)
+async def main():
+    files = await intelligent_batch_process(
+        prompts=["日落", "城市", "森林"],
+        model_name="qwen/qwen-image",
+        max_concurrent=8,
+        output_filepath=["output/sunset.png", "output/city.png", "output/forest.png"]
+    )
+    return files
+
+# 运行异步函数
+asyncio.run(main())
 ```
 
 ## 📋 支持的模型
