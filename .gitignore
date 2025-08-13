@@ -7,6 +7,12 @@ __pycache__/
 *.pyd
 .Python
 output/
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+*.egg
 *.jpg
 *.png
 *.webp
