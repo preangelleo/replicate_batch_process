@@ -1,4 +1,5 @@
 import replicate, os, time, json
+import subprocess
 import google.generativeai as genai
 from .config import *
 from dotenv import load_dotenv
@@ -45,6 +46,94 @@ def get_image_input_param_name(model_name):
     
     # Common image input parameter names
     for param_name in ['input_image', 'image', 'start_image']:
+        if param_name in supported_params and supported_params[param_name].get('type') == 'file':
+            return param_name
+    return None
+
+def supports_reference_audio(model_name):
+    """Check if a model supports reference audio input"""
+    model_config = REPLICATE_MODELS.get(model_name, {})
+    return model_config.get('reference_audio', False)
+
+def convert_audio_format(input_file, output_format='wav'):
+    """
+    Convert audio file to WAV or MP3 format for TTS models
+    
+    Args:
+        input_file: Path to input audio file
+        output_format: Target format ('wav' or 'mp3')
+    
+    Returns:
+        Path to converted file or original file if conversion fails
+    """
+    # Check file extension
+    ext = os.path.splitext(input_file)[1].lower()
+    
+    # If already in supported format, return original
+    if ext in ['.wav', '.mp3']:
+        return input_file
+    
+    # Check if file needs conversion (m4a, aac, mp4, etc.)
+    if ext not in ['.m4a', '.aac', '.mp4', '.m4b', '.ogg', '.flac', '.wma']:
+        # Unknown format, try anyway but might fail
+        print(f"⚠️  Unknown audio format {ext}, attempting conversion...")
+    
+    # Check if ffmpeg is available
+    try:
+        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print(f"⚠️  ffmpeg not installed, cannot convert {ext} format")
+        print("   Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)")
+        return input_file  # Return original file, let it fail naturally
+    
+    # Create converted audio directory
+    converted_dir = "converted_audio"
+    os.makedirs(converted_dir, exist_ok=True)
+    
+    # Generate output filename
+    base_name = os.path.splitext(os.path.basename(input_file))[0]
+    # Clean filename for safety
+    clean_name = base_name.replace(' ', '_').replace('(', '').replace(')', '')
+    output_file = os.path.join(converted_dir, f"{clean_name}_converted.{output_format}")
+    
+    # If already converted, return cached version
+    if os.path.exists(output_file):
+        print(f"♻️  Using cached converted audio: {output_file}")
+        return output_file
+    
+    # Convert audio
+    print(f"🔄 Converting {ext} to {output_format.upper()}...")
+    cmd = [
+        'ffmpeg',
+        '-i', input_file,
+        '-ar', '16000',  # 16kHz sample rate (good for TTS)
+        '-ac', '1',      # Mono audio
+        '-y',            # Overwrite output
+        output_file
+    ]
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            print(f"✅ Audio converted to: {output_file}")
+            return output_file
+        else:
+            print(f"⚠️  Conversion failed, using original file")
+            return input_file
+    except subprocess.TimeoutExpired:
+        print(f"⚠️  Conversion timeout, using original file")
+        return input_file
+    except Exception as e:
+        print(f"⚠️  Conversion error: {e}, using original file")
+        return input_file
+
+def get_audio_input_param_name(model_name):
+    """Get the parameter name for audio input for a specific model"""
+    model_config = REPLICATE_MODELS.get(model_name, {})
+    supported_params = model_config.get('supported_params', {})
+    
+    # Common audio input parameter names
+    for param_name in ['audio_prompt', 'audio_input', 'reference_audio']:
         if param_name in supported_params and supported_params[param_name].get('type') == 'file':
             return param_name
     return None
@@ -282,7 +371,19 @@ def replicate_model_calling(prompt, model_name, **kwargs):
         raise ValueError(error_message)
     
     os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
-    output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{model_name}.jpg"))
+    
+    # Determine default file extension based on model type
+    model_config = REPLICATE_MODELS.get(model_name, {})
+    model_type = model_config.get('model_type', 'image')
+    
+    if model_type == 'audio':
+        default_ext = '.wav'
+    elif model_type == 'video':
+        default_ext = '.mp4'
+    else:
+        default_ext = '.jpg'
+    
+    output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{model_name}{default_ext}"))
     
     original_model = model_name
     current_kwargs = kwargs.copy()
@@ -326,8 +427,13 @@ def replicate_model_calling(prompt, model_name, **kwargs):
                             if file_input.startswith(('http://', 'https://')):
                                 input_params[param_name] = file_input
                             else:
-                                # Treat as local file path, open it
+                                # Treat as local file path
                                 try:
+                                    # Check if this is an audio parameter and needs conversion
+                                    if param_name in ['audio_prompt', 'audio_input', 'reference_audio', 'audio']:
+                                        # Convert audio format if needed
+                                        file_input = convert_audio_format(file_input)
+                                    
                                     input_params[param_name] = open(file_input, 'rb')
                                     print(f"📁 Opened file: {file_input}")
                                 except FileNotFoundError:
@@ -389,8 +495,28 @@ def replicate_model_calling(prompt, model_name, **kwargs):
                 else: 
                     current_filepath = output_filepath
                 
-                with open(current_filepath, "wb") as file: 
-                    file.write(item.read())
+                # 处理不同类型的输出
+                if isinstance(item, str) and item.startswith(('http://', 'https://')):
+                    # 输出是URL，需要下载文件
+                    import requests
+                    print(f"📥 Downloading from URL: {item}")
+                    response = requests.get(item)
+                    response.raise_for_status()
+                    with open(current_filepath, "wb") as file:
+                        file.write(response.content)
+                elif hasattr(item, 'read'):
+                    # FileOutput对象，直接读取
+                    with open(current_filepath, "wb") as file: 
+                        file.write(item.read())
+                else:
+                    # 其他情况，尝试直接写入
+                    with open(current_filepath, "wb") as file:
+                        if isinstance(item, bytes):
+                            file.write(item)
+                        else:
+                            # 尝试将字符串转为字节
+                            file.write(str(item).encode('utf-8'))
+                
                 saved_files.append(current_filepath)
             
             # 显示fallback链信息
@@ -512,6 +638,17 @@ if __name__ == "__main__":
                         custom_params[image_param_name] = image_input
                         print(f"Will use {image_input} as {image_param_name}")
         
+        # Check if model supports reference audio
+        if supports_reference_audio(selected_model):
+            audio_param_name = get_audio_input_param_name(selected_model)
+            if audio_param_name:
+                use_reference = input(f"\nThis model supports reference audio via '{audio_param_name}'. Add reference audio? (y/n): ").lower().strip()
+                if use_reference in ['y', 'yes']:
+                    audio_input = input("Enter audio file path or URL: ").strip()
+                    if audio_input:
+                        custom_params[audio_param_name] = audio_input
+                        print(f"Will use {audio_input} as {audio_param_name}")
+        
         # Allow user to customize other parameters
         customize_params = input("\nCustomize other parameters? (y/n): ").lower().strip()
         if customize_params in ['y', 'yes']:
@@ -560,10 +697,22 @@ if __name__ == "__main__":
                 print("No customizable parameters available for this model")
         
         starting_time = time.time()
+        
+        # Determine file extension based on model type
+        model_config = REPLICATE_MODELS.get(selected_model, {})
+        model_type = model_config.get('model_type', 'image')
+        
+        if model_type == 'audio':
+            file_ext = '.wav'
+        elif model_type == 'video':
+            file_ext = '.mp4'
+        else:
+            file_ext = '.jpg'
+        
         output_filepaths = replicate_model_calling(
             prompt, 
             selected_model, 
-            output_filepath=os.path.join("output", f"{str(int(starting_time))}.jpg"),
+            output_filepath=os.path.join("output", f"{str(int(starting_time))}{file_ext}"),
             **custom_params
         )
         finish_time = time.time()

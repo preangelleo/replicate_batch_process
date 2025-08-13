@@ -109,6 +109,25 @@ REPLICATE_MODELS = {
             'aspect_ratio': {'type': 'select', 'default': '16:9', 'options': ['16:9', '9:16', '1:1'], 'description': 'Aspect ratio (ignored if start_image provided)'},
             'negative_prompt': {'type': 'str', 'default': '', 'description': 'Things you do not want to see in the video'}
         }
+    },
+    'resemble-ai/chatterbox': {
+        'model_type': 'audio',
+        'price': 0.025, # $0.025 per thousand input characters
+        'url': 'https://replicate.com/resemble-ai/chatterbox',
+        'use_case': 'text_to_speech',
+        'specialized': 'voice_synthesis_with_emotion',
+        'scenario': 'expressive_audio_generation',
+        'reference_image': False,
+        'reference_audio': True,
+        'description': "Generate expressive, natural speech with unique emotion control, instant voice cloning from short audio, and built-in watermarking",
+        'supported_params': {
+            'prompt': {'type': 'str', 'default': None, 'required': True, 'description': 'Text to synthesize'},
+            'seed': {'type': 'int', 'default': None, 'description': 'Seed (None or 0 for random)'},
+            'cfg_weight': {'type': 'float', 'default': None, 'range': [0.2, 1.0], 'description': 'CFG/Pace weight'},
+            'temperature': {'type': 'float', 'default': None, 'range': [0.05, 5.0], 'description': 'Temperature'},
+            'audio_prompt': {'type': 'file', 'default': None, 'description': 'Path to the reference audio file (Optional)'},
+            'exaggeration': {'type': 'float', 'default': None, 'range': [0.25, 2.0], 'description': 'Exaggeration (Neutral = 0.5, extreme values can be unstable)'}
+        }
     }
 }
 

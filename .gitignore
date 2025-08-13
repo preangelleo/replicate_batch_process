@@ -14,7 +14,17 @@ output/
 .DS_Store
 Thumbs.db
 
+# Converted audio files (temporary)
+converted_audio/
+
 # Claude Code 生成的文件和目录
 .claude-flow/
 .swarm/
 code_backup/
+
+# Comprehensive test (keep locally but don't commit)
+comprehensive_test.py
+test_report*.json
+
+# Internal documentation (not for open source)
+ADD_NEW_ENDPOINT_INSTRUCTION.md

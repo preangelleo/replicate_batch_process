@@ -40,7 +40,11 @@ python-dotenv>=0.19.0  # Environment variable management
 ## 📦 Installation
 
 ```bash
+# First time installation
 pip install replicate-batch-process
+
+# Upgrade to latest version
+pip install --upgrade replicate-batch-process
 ```
 
 ## 🚀 Quick Start

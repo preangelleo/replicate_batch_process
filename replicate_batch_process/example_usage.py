@@ -361,6 +361,98 @@ async def run_all_examples():
 
 
 # =============================================================================
+# 示例5: Text-to-Speech with Chatterbox
+# =============================================================================
+
+def text_to_speech_example():
+    """
+    使用 Chatterbox 模型进行文本到语音转换
+    支持情感控制和可选的语音克隆
+    """
+    print("\n" + "=" * 60)
+    print("🎤 Text-to-Speech Example with Chatterbox")
+    print("=" * 60)
+    
+    # 基本 TTS 示例
+    print("\n1️⃣ Basic Text-to-Speech:")
+    basic_text = "Hello! This is a test of the Chatterbox text-to-speech model. It can generate natural sounding speech with emotion control."
+    
+    print(f"   Text: {basic_text[:50]}...")
+    output_basic = replicate_model_calling(
+        prompt=basic_text,
+        model_name="resemble-ai/chatterbox",
+        output_filepath="output/tts_basic.wav"
+    )
+    print(f"   ✅ Generated: {output_basic[0]}")
+    
+    # 带参数控制的 TTS
+    print("\n2️⃣ TTS with Custom Parameters:")
+    custom_text = "I'm speaking with different temperature and exaggeration settings. This creates more expressive speech!"
+    
+    output_custom = replicate_model_calling(
+        prompt=custom_text,
+        model_name="resemble-ai/chatterbox",
+        output_filepath="output/tts_custom.wav",
+        temperature=1.5,  # 更高的温度，更多变化
+        exaggeration=0.8,  # 更高的夸张度
+        cfg_weight=0.7,
+        seed=42  # 固定种子以便复现
+    )
+    print(f"   Parameters used:")
+    print(f"   - Temperature: 1.5 (more variation)")
+    print(f"   - Exaggeration: 0.8 (more expressive)")
+    print(f"   - CFG Weight: 0.7")
+    print(f"   ✅ Generated: {output_custom[0]}")
+    
+    # 带参考音频的 TTS（语音克隆）- 可选
+    print("\n3️⃣ TTS with Voice Cloning (Optional):")
+    clone_text = "If you provide a reference audio file, I can clone that voice style!"
+    
+    # 检查是否要使用参考音频
+    use_ref = input("   Do you have a reference audio file for voice cloning? (y/n): ").lower().strip()
+    
+    if use_ref == 'y':
+        ref_audio_path = input("   Enter the path to your reference audio file: ").strip()
+        if ref_audio_path and os.path.exists(ref_audio_path):
+            output_clone = replicate_model_calling(
+                prompt=clone_text,
+                model_name="resemble-ai/chatterbox",
+                output_filepath="output/tts_cloned.wav",
+                audio_prompt=ref_audio_path
+            )
+            print(f"   ✅ Generated with voice cloning: {output_clone[0]}")
+        else:
+            print("   ⚠️ Reference audio file not found, skipping voice cloning example")
+    else:
+        print("   ⏭️ Skipping voice cloning example")
+    
+    # 批量 TTS 处理
+    print("\n4️⃣ Batch TTS Processing:")
+    texts = [
+        "This is the first sentence.",
+        "Here comes the second one with more emotion!",
+        "And finally, the third sentence completes our batch."
+    ]
+    
+    print("   Processing multiple texts...")
+    for i, text in enumerate(texts, 1):
+        output = replicate_model_calling(
+            prompt=text,
+            model_name="resemble-ai/chatterbox",
+            output_filepath=f"output/tts_batch_{i}.wav",
+            temperature=0.8 + (i * 0.2),  # 递增温度
+            exaggeration=0.4 + (i * 0.1)  # 递增夸张度
+        )
+        print(f"   ✅ [{i}/3] Generated: {output[0]}")
+    
+    print("\n" + "=" * 60)
+    print("🎉 Text-to-Speech examples completed!")
+    print("=" * 60)
+    
+    return True
+
+
+# =============================================================================
 # 交互式选择函数
 # =============================================================================
 
@@ -372,12 +464,13 @@ async def interactive_examples():
     print("1. 单个图像生成 (最简单)")
     print("2. 同模型批量生成 (5个图像)")
     print("3. 混合模型高级批处理 (5个不同配置)")
-    print("4. 运行所有示例")
+    print("4. 🎤 Text-to-Speech (Chatterbox音频生成)")
+    print("5. 运行所有示例")
     print("0. 退出")
     
     while True:
         try:
-            choice = input("\n请输入选择 (0-4): ").strip()
+            choice = input("\n请输入选择 (0-5): ").strip()
             
             if choice == '0':
                 print("👋 再见!")
@@ -389,9 +482,11 @@ async def interactive_examples():
             elif choice == '3':
                 await advanced_mixed_models()
             elif choice == '4':
+                text_to_speech_example()
+            elif choice == '5':
                 await run_all_examples()
             else:
-                print("❌ 无效选择，请输入 0-4")
+                print("❌ 无效选择，请输入 0-5")
                 continue
                 
             print("\n" + "-" * 40)
