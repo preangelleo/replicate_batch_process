@@ -27,7 +27,7 @@ def read_requirements():
 
 setup(
     name='replicate-batch-process',
-    version='1.0.9',
+    version='1.1.0',
     author='preangelleo',
     author_email='',
     description='Intelligent batch processing tool for Replicate models with automatic fallback mechanisms',
