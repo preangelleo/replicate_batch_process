@@ -418,7 +418,26 @@ def replicate_model_calling(prompt, model_name, **kwargs):
             # Add parameters from kwargs that are supported by the model
             for param_name, param_config in supported_params.items():
                 if param_name in current_kwargs:
-                    # Handle file inputs specially
+                    # Handle special cases for google/nano-banana image_input (requires URLs only)
+                    if model_name == 'google/nano-banana' and param_name == 'image_input':
+                        image_list = current_kwargs[param_name]
+                        if isinstance(image_list, list):
+                            url_list = []
+                            for img in image_list:
+                                if isinstance(img, str):
+                                    if img.startswith(('http://', 'https://')):
+                                        url_list.append(img)
+                                    else:
+                                        print(f"⚠️  google/nano-banana requires URLs for image_input, not file paths: {img}")
+                                        print(f"   Skipping local file path. Upload to a hosting service first.")
+                            if url_list:
+                                input_params[param_name] = url_list
+                                print(f"📁 Using {len(url_list)} image URLs for nano-banana")
+                            else:
+                                print(f"⚠️  No valid URLs found for google/nano-banana image_input parameter")
+                        continue
+                    
+                    # Handle other file inputs normally
                     if param_config.get('type') == 'file' and current_kwargs[param_name] is not None:
                         file_input = current_kwargs[param_name]
                         # If it's a string, treat as file path or URL

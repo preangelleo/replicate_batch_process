@@ -137,10 +137,10 @@ REPLICATE_MODELS = {
         'specialized': 'high_quality_detailed_images_with_reference',
         'scenario': 'premium_quality_generation_with_reference_images',
         'reference_image': True,
-        'description': "Google's Gemini 2.5 Flash Image model (nicknamed 'Nano Banana') - A state-of-the-art image generation model that supports up to 3 reference images for style transfer and context understanding.",
+        'description': "Google's Gemini 2.5 Flash Image model (nicknamed 'Nano Banana') - A state-of-the-art image generation model that supports up to 3 reference images for style transfer and context understanding. IMPORTANT: Only generates square format (1024x1024) images.",
         'supported_params': {
             'prompt': {'type': 'str', 'default': None, 'required': True, 'description': 'Text prompt describing the desired image'},
-            'image_input': {'type': 'list', 'default': None, 'description': 'List of reference image URLs or file paths (maximum 3 images)'},
+            'image_input': {'type': 'list', 'default': None, 'description': 'List of reference image URLs (maximum 3 images). IMPORTANT: Must be URLs, not local file paths. Local files will be skipped.'},
             'output_format': {'type': 'select', 'default': 'jpg', 'options': ['jpg', 'png'], 'description': 'Output image format'}
         }
     }
