@@ -65,10 +65,20 @@ echo "REPLICATE_API_TOKEN=your-token-here" > .env
 ```python
 from replicate_batch_process import replicate_model_calling
 
+# Basic text-to-image generation
 file_paths = replicate_model_calling(
     prompt="A beautiful sunset over mountains",
     model_name="qwen/qwen-image",  # Use supported model
     output_filepath="output/sunset.jpg"
+)
+
+# With reference images using nano-banana model (generates square 1024x1024 images only)
+file_paths = replicate_model_calling(
+    prompt="Make the sheets in the style of the logo. Make the scene natural.",
+    model_name="google/nano-banana",
+    image_input=["logo.png", "style_ref.jpg"],
+    output_format="jpg",
+    output_filepath="output/styled_sheets.jpg"
 )
 ```
 
@@ -156,6 +166,7 @@ if __name__ == "__main__":
 | **black-forest-labs/flux-kontext-max** | $0.08 | Image editing, character consistency | ✅ |
 | **qwen/qwen-image** | $0.025 | Text rendering, cover images | ❌ |
 | **google/imagen-4-ultra** | $0.06 | High-quality detailed images | ❌ |
+| **google/nano-banana** | $0.039 | Premium quality with reference images | ✅ (up to 3 images, **square format only**) |
 
 ### Video Generation Models
 | Model | Price | Specialization | Reference Image Support |
@@ -177,6 +188,13 @@ replicate_model_calling(
     model_name="black-forest-labs/flux-dev",  # Doesn't support reference images
     input_image="path/to/image.jpg"           # → Auto-switches to flux-kontext-max
 )
+
+# Multiple reference images automatically route to nano-banana (square format only)
+replicate_model_calling(
+    prompt="Make the sheets in the style of the logo. Make the scene natural.",
+    model_name="qwen/qwen-image",  # Doesn't support reference images
+    image_input=["image1.jpg", "image2.png"]  # → Auto-switches to google/nano-banana (1024x1024)
+)
 ```
 
 ### Parameter Compatibility Handling
@@ -193,6 +211,7 @@ replicate_model_calling(
 ### API Error Recovery
 
 **v1.0.9 Enhanced Triangular Fallback Loop:**
+- `Nano Banana` → `Imagen 4 Ultra` (when nano-banana fails)
 - `Flux Dev` → `Flux Kontext Max` (for reference images)
 - `Flux Kontext Max` → `Qwen Image` (on sensitive content)
 - `Qwen Image` → `Flux Dev` (with weak censorship disabled)
@@ -283,6 +302,12 @@ FALLBACK_MODELS = {
 - **Status**: ✅ Fully resolved
 
 ### Current Limitations (v1.0.9)
+⚠️ **Google Nano-Banana Aspect Ratio**
+- **Issue**: google/nano-banana model only supports square format (1024x1024)
+- **Limitation**: No aspect_ratio parameter - prompt instructions for 16:9 are ignored
+- **Workaround**: Use flux-kontext-max or imagen-4-ultra for custom aspect ratios
+- **Status**: ⚠️ Model limitation, no fix available
+
 ⚠️ **Kontext Max Parameter Compatibility**
 - **Issue**: Certain parameters cause Kontext Max to fail
 - **Solution**: v1.0.9 implements triangular fallback loop for maximum success

@@ -128,6 +128,21 @@ REPLICATE_MODELS = {
             'audio_prompt': {'type': 'file', 'default': None, 'description': 'Path to the reference audio file (Optional)'},
             'exaggeration': {'type': 'float', 'default': None, 'range': [0.25, 2.0], 'description': 'Exaggeration (Neutral = 0.5, extreme values can be unstable)'}
         }
+    },
+    'google/nano-banana': {
+        'model_type': 'image',
+        'price': 0.039, # $0.039 per image
+        'url': 'https://replicate.com/google/nano-banana',
+        'use_case': 'text_to_image',
+        'specialized': 'high_quality_detailed_images_with_reference',
+        'scenario': 'premium_quality_generation_with_reference_images',
+        'reference_image': True,
+        'description': "Google's Gemini 2.5 Flash Image model (nicknamed 'Nano Banana') - A state-of-the-art image generation model that supports up to 3 reference images for style transfer and context understanding.",
+        'supported_params': {
+            'prompt': {'type': 'str', 'default': None, 'required': True, 'description': 'Text prompt describing the desired image'},
+            'image_input': {'type': 'list', 'default': None, 'description': 'List of reference image URLs or file paths (maximum 3 images)'},
+            'output_format': {'type': 'select', 'default': 'jpg', 'options': ['jpg', 'png'], 'description': 'Output image format'}
+        }
     }
 }
 
@@ -170,6 +185,13 @@ FALLBACK_MODELS = {
             'fallback_model': 'black-forest-labs/flux-dev',
             'condition': 'api_error',
             'description': 'Imagen 4 Ultra调用失败，切换到Flux Dev'
+        }
+    },
+    'google/nano-banana': {
+        'fail': {
+            'fallback_model': 'google/imagen-4-ultra',
+            'condition': 'api_error',
+            'description': 'Nano Banana调用失败，切换到Imagen 4 Ultra'
         }
     }
 }
@@ -305,6 +327,21 @@ FALLBACK_PARAMETER_MAPPING = {
             'num_outputs': 1,
             'prompt_strength': 0.8,
             'disable_safety_checker': True  # 关键：禁用审查以确保能出图
+        }
+    },
+    
+    # Nano Banana -> Imagen 4 Ultra
+    ('google/nano-banana', 'google/imagen-4-ultra'): {
+        'param_mapping': {
+            'prompt': 'prompt',
+            'output_format': 'output_format'
+        },
+        'remove_params': [
+            'image_input'  # Imagen 4 Ultra doesn't support reference images
+        ],
+        'add_params': {
+            'aspect_ratio': '16:9',
+            'safety_filter_level': 'block_only_high'
         }
     }
 }

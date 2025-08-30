@@ -47,10 +47,20 @@ echo "REPLICATE_API_TOKEN=你的token" > .env
 ```python
 from replicate_batch_process import replicate_model_calling
 
+# 基本文本生成图像
 file_paths = replicate_model_calling(
     prompt="山峦上的美丽日落",
     model_name="qwen/qwen-image",  # 使用支持的模型
     output_filepath="output/sunset.jpg"
+)
+
+# 使用nano-banana模型参考图像生成（仅生成1024x1024正方形图像）
+file_paths = replicate_model_calling(
+    prompt="根据logo风格制作床单，场景要自然",
+    model_name="google/nano-banana",
+    image_input=["logo.png", "style_ref.jpg"],
+    output_format="jpg",
+    output_filepath="output/styled_sheets.jpg"
 )
 ```
 
@@ -81,6 +91,7 @@ asyncio.run(main())
 | **black-forest-labs/flux-kontext-max** | $0.08 | 图像编辑，角色一致性 | ✅ |
 | **qwen/qwen-image** | $0.025 | 文本渲染，封面图片 | ❌ |
 | **google/imagen-4-ultra** | $0.06 | 高质量细节图像 | ❌ |
+| **google/nano-banana** | $0.039 | 高质量参考图像生成 | ✅ (最多3张图像，**仅支持正方形格式**) |
 
 ### 视频生成模型
 | 模型 | 价格 | 专长领域 | 支持参考图像 |
@@ -101,6 +112,13 @@ replicate_model_calling(
     prompt="根据这张图片生成",
     model_name="black-forest-labs/flux-dev",  # 不支持参考图像
     input_image="path/to/image.jpg"           # → 自动切换到flux-kontext-max
+)
+
+# 多个参考图像自动路由到nano-banana（仅支持正方形格式）
+replicate_model_calling(
+    prompt="根据logo风格制作床单，场景要自然",
+    model_name="qwen/qwen-image",  # 不支持参考图像
+    image_input=["image1.jpg", "image2.png"]  # → 自动切换到google/nano-banana (1024x1024)
 )
 ```
 
