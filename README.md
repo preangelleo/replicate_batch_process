@@ -408,6 +408,53 @@ async def batch_with_error_handling():
 asyncio.run(batch_with_error_handling())
 ```
 
+## 🌟 Real-World Showcase
+
+### [Illustration Style Samples](https://github.com/preangelleo/illustration-style-samples) 
+**A comprehensive AI model comparison across 17 illustration styles**
+
+This project showcases the power of `replicate-batch-process` for systematic AI model testing and comparison. The project generated **68 high-quality images** across 4 different AI models using intelligent batch processing.
+
+**Key Features Demonstrated:**
+- ⚡ **300 Concurrent Requests** - Maximum throughput testing
+- 🎯 **Precise File Naming** - Each image named by style and model for easy organization
+- 🔄 **Smart Model Fallback** - Automatic parameter compatibility handling
+- 📊 **Performance Analysis** - Speed and quality metrics across all models
+
+**Models Tested:**
+- `black-forest-labs/flux-dev` - Fast, high-quality 16:9 generation
+- `black-forest-labs/flux-1.1-pro-ultra` - Premium quality with detailed rendering  
+- `qwen/qwen-image` - Consistent results with excellent style interpretation
+- `google/nano-banana` - Very fast square format generation
+
+**Results:**
+- **68 Images Generated** in a single batch run (4 models × 17 styles)
+- **100% Success Rate** across all models and styles
+- **Intelligent Parameter Handling** - Different models got optimized parameters automatically
+- **Perfect File Organization** - No mixed-up results despite concurrent processing
+
+**Code Example from the Project:**
+```python
+from replicate_batch_process.intelligent_batch_processor import intelligent_batch_process
+
+# Process all 17 styles for Flux Dev model
+files = await intelligent_batch_process(
+    prompts=prompts,
+    model_name="black-forest-labs/flux-dev",
+    max_concurrent=300,  # High concurrency for pressure testing
+    output_filepath=output_filepaths,  # Precise naming control
+    aspect_ratio="16:9",
+    guidance=3.0
+)
+```
+
+**Browse the Results:**
+- 📸 [View All Sample Images](https://github.com/preangelleo/illustration-style-samples#📊-sample-results)
+- 📖 [Complete Style Guide](https://github.com/preangelleo/illustration-style-samples/blob/main/docs/style-descriptions.md) - Copyable prompts for all 17 styles
+- 🔧 [Source Code](https://github.com/preangelleo/illustration-style-samples/blob/main/illustration_styles_generator.py) - See batch processing in action
+
+*This showcase demonstrates production-ready usage of replicate-batch-process for large-scale AI image generation projects.*
+
 ## 🏗️ Project Structure
 
 ```
