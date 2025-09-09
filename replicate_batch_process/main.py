@@ -289,7 +289,18 @@ def map_parameters(source_model, target_model, kwargs):
             else:
                 print(f"   ✅ Mapped {source_param} -> {target_param}")
             
-            mapped_kwargs[target_param] = value
+            # 确保映射后的值不是None，如果为None则尝试使用目标模型的默认值
+            if value is None:
+                target_model_config = REPLICATE_MODELS.get(target_model, {})
+                target_supported_params = target_model_config.get('supported_params', {})
+                if target_param in target_supported_params and target_supported_params[target_param].get('default') is not None:
+                    mapped_kwargs[target_param] = target_supported_params[target_param]['default']
+                    print(f"   🔄 Mapped {source_param} was None, using target model default for {target_param}: {mapped_kwargs[target_param]}")
+                else:
+                    # 如果目标模型也没有默认值，则不添加此参数，让API自行处理（可能报错）
+                    print(f"   ⚠️  Mapped {source_param} was None, and no default for {target_param} in target model. Skipping.")
+            else:
+                mapped_kwargs[target_param] = value
     
     # 2. 添加未映射但目标模型支持的参数
     remove_params = set(mapping_config.get('remove_params', []))
@@ -372,6 +383,9 @@ def replicate_model_calling(prompt, model_name, **kwargs):
     
     os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
     
+    # Store the original model name for output naming
+    original_model_for_output = model_name 
+    
     # Determine default file extension based on model type
     model_config = REPLICATE_MODELS.get(model_name, {})
     model_type = model_config.get('model_type', 'image')
@@ -383,7 +397,8 @@ def replicate_model_calling(prompt, model_name, **kwargs):
     else:
         default_ext = '.jpg'
     
-    output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{model_name}{default_ext}"))
+    # Construct output_filepath using the ORIGINAL model name for consistent naming
+    output_filepath = kwargs.get("output_filepath", os.path.join("output", f"output_{original_model_for_output.replace('/', '_')}{default_ext}"))
     
     original_model = model_name
     current_kwargs = kwargs.copy()
@@ -541,7 +556,7 @@ def replicate_model_calling(prompt, model_name, **kwargs):
             # 显示fallback链信息
             if fallback_chain:
                 print(f"🔗 Fallback chain: {' -> '.join(fallback_chain)} -> SUCCESS")
-                print(f"   Original model: {original_model}")
+                print(f"   Original model: {original_model_for_output}") # Use original model name here
                 print(f"   Final model: {model_name}")
             
             return saved_files if saved_files else [output_filepath]
@@ -590,6 +605,7 @@ def replicate_model_calling(prompt, model_name, **kwargs):
                 if fallback_chain:
                     print(f"🔗 Partial fallback chain: {' -> '.join(fallback_chain)} -> FAILED")
                 raise error
+
 
 if __name__ == "__main__":
     model_list = list(REPLICATE_MODELS.keys())   

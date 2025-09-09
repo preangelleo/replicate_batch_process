@@ -6,16 +6,58 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Intelligent batch processing tool for Replicate models with **automatic fallback mechanisms** and concurrent processing.
+Intelligent batch processing tool for Replicate models with **Global Concurrency Control**, automatic fallback mechanisms, and smart concurrent processing. 
+
+🌐 **v2.0 NEW:** Account-level concurrency control prevents API limit violations across multiple processes!
 
 ## ✨ Key Features
 
+- 🌐 **Global Concurrency Control (NEW)** - Account-level rate limiting across multiple processes
+- ⚡ **Smart Concurrency Control** - Adaptive rate limiting and batch processing  
 - 🔄 **Intelligent Fallback System** - Automatic model switching on incompatibility
-- ⚡ **Smart Concurrency Control** - Adaptive rate limiting and batch processing
 - 🎯 **Three Usage Modes** - Single, batch same-model, and mixed-model processing
 - 📝 **Custom File Naming** - Ordered output with correspondence control
 - 🛡️ **Error Resilience** - Comprehensive retry and recovery mechanisms
 - ✅ **Model Validation** - Automatic detection of unsupported models with clear error messages
+
+## 🌐 NEW: Global Concurrency Control (v2.0)
+
+🔒 **Critical Security Enhancement** - Account-level concurrency control prevents exceeding Replicate API limits across multiple processes!
+
+### Key Benefits
+- 🛡️ **API Limit Protection** - Never exceed your account's concurrent request limits
+- 🔄 **Multi-Instance Safety** - Safely run multiple batch processing scripts simultaneously
+- ⚙️ **Singleton Management** - All instances automatically share the same global state
+- 🎛️ **Flexible Configuration** - Environment variables or parameter passing
+- 📊 **Real-time Monitoring** - Track global utilization and performance metrics
+
+### Quick Setup
+```bash
+# Method 1: Environment Variables (Recommended)
+export REPLICATE_API_TOKEN="r8_your_token_here"
+export REPLICATE_GLOBAL_MAX_CONCURRENT=60
+
+# Method 2: Parameter Passing (Highest Priority)
+await intelligent_batch_process(
+    prompts=["beautiful sunset", "mountain landscape"],
+    model_name="black-forest-labs/flux-dev",
+    max_concurrent=8,  # Local concurrency limit
+    global_max_concurrent=60,  # Global account limit
+    replicate_api_token="r8_your_token_here"
+)
+```
+
+### How It Works
+```
+Multiple Scripts → Global Manager (Singleton) → Shared Semaphore (60 max) → Replicate API
+     ↓                    ↓                           ↓
+Local Limit: 8      Local Limit: 12           Local Limit: 5
+Total: 25 potential concurrent → Controlled to 60 global maximum
+```
+
+**🎯 Perfect for:** Production environments, CI/CD pipelines, multiple team members, high-throughput processing
+
+> **Migration Note:** Fully backward compatible! No code changes required. Simply add environment variables to enable global concurrency control.
 
 ## 📋 Requirements
 
@@ -49,17 +91,21 @@ pip install --upgrade replicate-batch-process
 
 ## 🚀 Quick Start
 
-### 1. Set up API Token
+### 1. Set up API Token & Global Concurrency
 ```bash
 # Option 1: Interactive setup
 replicate-init
 
-# Option 2: Manual setup
+# Option 2: Manual setup (with Global Concurrency)
 export REPLICATE_API_TOKEN="your-token-here"
+export REPLICATE_GLOBAL_MAX_CONCURRENT=60
 
-# Option 3: .env file
+# Option 3: .env file (recommended for production)
 echo "REPLICATE_API_TOKEN=your-token-here" > .env
+echo "REPLICATE_GLOBAL_MAX_CONCURRENT=60" >> .env
 ```
+
+> 🌐 **NEW in v2.0:** `REPLICATE_GLOBAL_MAX_CONCURRENT` enables account-level concurrency control across all your batch processing scripts!
 
 ### 2. Single Image Generation
 ```python
@@ -156,6 +202,83 @@ async def advanced_batch():
 if __name__ == "__main__":
     asyncio.run(advanced_batch())
 ```
+
+#### 🌐 Global Concurrency Control (NEW)
+```python
+import asyncio
+import os
+from replicate_batch_process import intelligent_batch_process
+from replicate_batch_process.global_concurrency_manager import get_global_status
+
+async def global_concurrency_example():
+    # Method 1: Environment Variables (Production Recommended)
+    os.environ["REPLICATE_API_TOKEN"] = "r8_your_real_token_here"
+    os.environ["REPLICATE_GLOBAL_MAX_CONCURRENT"] = "60"
+    
+    # Process images with global concurrency control
+    prompts = ["beautiful sunset over mountains", "peaceful lake reflection", "city skyline at night"]
+    
+    files = await intelligent_batch_process(
+        prompts=prompts,
+        model_name="black-forest-labs/flux-dev",
+        max_concurrent=8,  # Local concurrency limit per instance
+        output_dir="./output"
+        # Global limit (60) automatically applies from environment variable
+    )
+    
+    # Monitor global concurrency status
+    status = get_global_status()
+    print(f"🌐 Global Status:")
+    print(f"   Max concurrent: {status['global_max_concurrent']}")
+    print(f"   Current active: {status['current_concurrent']}")
+    print(f"   Available slots: {status['available_slots']}")
+    print(f"   Utilization: {status['utilization_percentage']:.1f}%")
+    
+    return files
+
+async def multi_instance_example():
+    """Example: Multiple instances safely sharing global limits"""
+    from replicate_batch_process import IntelligentBatchProcessor
+    
+    # Instance 1: Handles landscape images
+    processor1 = IntelligentBatchProcessor(
+        max_concurrent=8,  # Local limit
+        replicate_api_token="r8_your_token_here",
+        global_max_concurrent=60  # Shared global limit
+    )
+    
+    # Instance 2: Handles portrait images  
+    processor2 = IntelligentBatchProcessor(
+        max_concurrent=12,  # Different local limit
+        replicate_api_token="r8_your_token_here"
+        # global_max_concurrent automatically shared via singleton
+    )
+    
+    # Both instances coordinate through shared global semaphore
+    # Total concurrent requests across both will never exceed 60
+    
+    print("✅ Multi-instance setup complete - global coordination active!")
+    
+    # Check that both instances share the same global configuration
+    status1 = processor1.global_manager.get_global_status()
+    status2 = processor2.global_manager.get_global_status()
+    print(f"Instance 1 sees global limit: {status1['global_max_concurrent']}")
+    print(f"Instance 2 sees global limit: {status2['global_max_concurrent']}")
+    print(f"✅ Verification: Both instances share same global state")
+
+# Production usage
+if __name__ == "__main__":
+    # Run global concurrency example
+    asyncio.run(global_concurrency_example())
+    
+    # Demonstrate multi-instance coordination
+    asyncio.run(multi_instance_example())
+```
+
+**🚨 Critical Benefits:**
+- **Before v2.0:** Multiple scripts could exceed API limits → Account throttling/errors
+- **After v2.0:** Global coordination ensures total requests stay within account limits
+- **Perfect for:** Production environments, CI/CD pipelines, team collaboration
 
 ## 📋 Supported Models
 

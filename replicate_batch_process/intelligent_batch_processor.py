@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from collections import deque
 
 from .main import replicate_model_calling
+from .global_concurrency_manager import GlobalReplicateConcurrencyManager
 
 
 @dataclass
@@ -155,19 +156,27 @@ class IntelligentRateLimiter:
 
 
 class IntelligentBatchProcessor:
-    """智能批处理器 - 合并最佳功能"""
+    """智能批处理器 - 支持全局并发控制"""
     
     def __init__(self, 
                  max_concurrent: int = 8,
                  rate_limit_per_minute: int = 600,
                  max_retries: int = 3,
                  retry_delay: float = 2.0,
-                 progress_callback: Optional[Callable] = None):
+                 progress_callback: Optional[Callable] = None,
+                 replicate_api_token: Optional[str] = None,
+                 global_max_concurrent: Optional[int] = None):
         
         self.max_concurrent = max_concurrent
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.progress_callback = progress_callback
+        
+        # 初始化全局并发管理器
+        self.global_manager = GlobalReplicateConcurrencyManager(
+            api_token=replicate_api_token,
+            global_max_concurrent=global_max_concurrent
+        )
         
         # 智能速率限制器
         self.rate_limiter = IntelligentRateLimiter(rate_limit_per_minute, 60)
@@ -189,7 +198,8 @@ class IntelligentBatchProcessor:
         }
         
         print(f"🧠 智能批处理器初始化:")
-        print(f"   最大并发: {max_concurrent}")
+        print(f"   本地最大并发: {max_concurrent}")
+        print(f"   全局最大并发: {self.global_manager._credentials.global_max_concurrent}")
         print(f"   速率限制: {rate_limit_per_minute}/分钟")
         print(f"   最大重试: {max_retries}")
     
@@ -233,7 +243,7 @@ class IntelligentBatchProcessor:
         return strategy
     
     async def _process_single_task(self, queued_task: QueuedTask) -> BatchResult:
-        """处理单个任务"""
+        """处理单个任务 - 支持全局并发控制"""
         task_id = queued_task.request.request_id
         
         try:
@@ -247,17 +257,26 @@ class IntelligentBatchProcessor:
             await self.rate_limiter.record_request()
             queued_task.started_at = time.time()
             
-            # 处理请求
+            # 处理请求 - 使用全局并发控制
             start_time = time.time()
             
-            # 调用 Replicate API
-            file_paths = await asyncio.to_thread(
-                replicate_model_calling,
-                queued_task.request.prompt,
-                queued_task.request.model_name,
-                output_filepath=queued_task.request.output_filepath,
-                **queued_task.request.kwargs
-            )
+            # 获取全局信号量，确保不超出账号级别并发限制
+            global_semaphore = self.global_manager.get_global_semaphore()
+            
+            # 双重并发控制：全局 + 本地
+            async with global_semaphore:
+                print(f"🔒 任务 {task_id} 获得全局配额")
+                
+                # 调用 Replicate API
+                file_paths = await asyncio.to_thread(
+                    replicate_model_calling,
+                    queued_task.request.prompt,
+                    queued_task.request.model_name,
+                    output_filepath=queued_task.request.output_filepath,
+                    **queued_task.request.kwargs
+                )
+                
+                print(f"🔓 任务 {task_id} 释放全局配额")
             
             duration = time.time() - start_time
             
@@ -287,14 +306,23 @@ class IntelligentBatchProcessor:
         start_time = time.time()
         
         try:
-            # 调用 Replicate API
-            file_paths = await asyncio.to_thread(
-                replicate_model_calling,
-                request.prompt,
-                request.model_name,
-                output_filepath=request.output_filepath,
-                **request.kwargs
-            )
+            # 获取全局信号量，确保不超出账号级别并发限制
+            global_semaphore = self.global_manager.get_global_semaphore()
+            
+            # 全局并发控制
+            async with global_semaphore:
+                print(f"🔒 任务 {request.request_id} 获得全局配额")
+                
+                # 调用 Replicate API
+                file_paths = await asyncio.to_thread(
+                    replicate_model_calling,
+                    request.prompt,
+                    request.model_name,
+                    output_filepath=request.output_filepath,
+                    **request.kwargs
+                )
+                
+                print(f"🔓 任务 {request.request_id} 释放全局配额")
             
             duration = time.time() - start_time
             return BatchResult(
@@ -454,17 +482,19 @@ class IntelligentBatchProcessor:
         
         # 创建所有任务
         start_time = time.time()
-        semaphore = asyncio.Semaphore(self.max_concurrent)
+        # 使用本地并发控制的信号量（全局并发控制在 _process_task_simple 中已处理）
+        local_semaphore = asyncio.Semaphore(self.max_concurrent)
         
-        async def process_with_semaphore(request):
-            async with semaphore:
+        async def process_with_local_semaphore(request):
+            # 本地并发控制（全局并发控制在 _process_task_simple 中处理）
+            async with local_semaphore:
                 return await self._process_task_simple(request)
         
         # 并发处理所有任务
-        tasks = [process_with_semaphore(request) for request in requests]
+        tasks = [process_with_local_semaphore(request) for request in requests]
         results = []
         
-        print(f"🔄 并发处理 {len(tasks)} 个任务...")
+        print(f"🔄 并发处理 {len(tasks)} 个任务 (本地限制: {self.max_concurrent}, 全局并发控制已集成)...")
         
         for i, coro in enumerate(asyncio.as_completed(tasks)):
             result = await coro
@@ -576,6 +606,8 @@ async def intelligent_batch_process(
     model_name: str,
     max_concurrent: int = 8,
     output_dir: str = "output/intelligent_batch",
+    replicate_api_token: Optional[str] = None,
+    global_max_concurrent: Optional[int] = None,
     **common_kwargs
 ) -> List[str]:
     """
@@ -586,6 +618,8 @@ async def intelligent_batch_process(
         model_name: 模型名称
         max_concurrent: 最大并发数
         output_dir: 输出目录（仅在common_kwargs中没有output_filepath时使用）
+        replicate_api_token: Replicate API token (可选，优先级高于环境变量)
+        global_max_concurrent: 全局最大并发数 (可选，优先级高于环境变量)
         **common_kwargs: 通用参数，包括可选的output_filepath
         
     Returns:
@@ -652,8 +686,12 @@ async def intelligent_batch_process(
         )
         requests.append(request)
     
-    # 智能处理
-    processor = IntelligentBatchProcessor(max_concurrent=max_concurrent)
+    # 智能处理 - 支持全局并发控制
+    processor = IntelligentBatchProcessor(
+        max_concurrent=max_concurrent,
+        replicate_api_token=replicate_api_token,
+        global_max_concurrent=global_max_concurrent
+    )
     results = await processor.process_intelligent_batch(requests)
     
     # 返回成功文件

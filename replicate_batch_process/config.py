@@ -63,6 +63,25 @@ REPLICATE_MODELS = {
             'disable_safety_checker': {'type': 'bool', 'default': False}
         }
     },
+    'black-forest-labs/flux-1.1-pro-ultra': {
+        'model_type': 'image',
+        'price': 0.05, # Placeholder price, adjust as needed
+        'url': 'https://replicate.com/black-forest-labs/flux-1.1-pro-ultra',
+        'use_case': 'text_to_image',
+        'specialized': 'high_quality_pro_images',
+        'scenario': 'premium_quality_generation',
+        'reference_image': True,
+        'description': 'A high-quality image generation model from Black Forest Labs, supporting various aspect ratios and image prompts.',
+        'supported_params': {
+            'aspect_ratio': {'type': 'select', 'default': '1:1', 'options': ['21:9', '16:9', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16', '9:21']},
+            'output_format': {'type': 'select', 'default': 'jpg', 'options': ['jpg', 'png']},
+            'raw': {'type': 'bool', 'default': False},
+            'safety_tolerance': {'type': 'int', 'default': 2, 'range': [1, 6]},
+            'seed': {'type': 'int', 'default': None},
+            'image_prompt': {'type': 'file', 'default': None, 'description': 'Optional image to guide generation'},
+            'image_prompt_strength': {'type': 'float', 'default': 0.1, 'range': [0, 1]}
+        }
+    },
     'google/imagen-4-ultra': {
         'model_type': 'image',
         'price': 0.06,
@@ -117,7 +136,6 @@ REPLICATE_MODELS = {
         'use_case': 'text_to_speech',
         'specialized': 'voice_synthesis_with_emotion',
         'scenario': 'expressive_audio_generation',
-        'reference_image': False,
         'reference_audio': True,
         'description': "Generate expressive, natural speech with unique emotion control, instant voice cloning from short audio, and built-in watermarking",
         'supported_params': {
@@ -192,6 +210,13 @@ FALLBACK_MODELS = {
             'fallback_model': 'google/imagen-4-ultra',
             'condition': 'api_error',
             'description': 'Nano Banana调用失败，切换到Imagen 4 Ultra'
+        }
+    },
+    'black-forest-labs/flux-1.1-pro-ultra': { # New fallback for the new model
+        'fail': {
+            'fallback_model': 'black-forest-labs/flux-dev',
+            'condition': 'api_error',
+            'description': 'Flux 1.1 Pro Ultra调用失败，切换到Flux Dev'
         }
     }
 }
@@ -342,6 +367,28 @@ FALLBACK_PARAMETER_MAPPING = {
         'add_params': {
             'aspect_ratio': '16:9',
             'safety_filter_level': 'block_only_high'
+        }
+    },
+    
+    # New: Flux 1.1 Pro Ultra -> Flux Dev (basic fallback)
+    ('black-forest-labs/flux-1.1-pro-ultra', 'black-forest-labs/flux-dev'): {
+        'param_mapping': {
+            'aspect_ratio': 'aspect_ratio',
+            'output_format': 'output_format',
+            'seed': 'seed'
+        },
+        'remove_params': [
+            'raw', 'safety_tolerance', 'image_prompt', 'image_prompt_strength'
+        ],
+        'add_params': {
+            'guidance': 3,
+            'go_fast': True,
+            'megapixels': '1',
+            'num_outputs': 1,
+            'output_quality': 80,
+            'prompt_strength': 0.8,
+            'num_inference_steps': 28,
+            'disable_safety_checker': False
         }
     }
 }
